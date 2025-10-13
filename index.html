@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 <html lang="tr">
@@ -10,6 +9,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   <title>Deneme Analiz V3</title>
+<!-- Google API Client -->
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
 
@@ -164,6 +166,11 @@
   <div id="studentList"></div>
 
 </div>
+<!-- Google Drive Entegrasyonu -->
+<div class="card">
+  <h3>Google Drive Entegrasyonu</h3>
+  <button onclick="handleAuthClick()">Google ile Giriş Yap ve Verileri Drive'a Kaydet</button>
+</div>
 
 <div id="modal" class="modal" style="display:none" tabindex="-1">
 
@@ -182,6 +189,49 @@
 <div id="audioToggle" title="Müziği Aç/Kapa" onclick="toggleAudio()">🔈</div>
 
 <script>
+const CLIENT_ID = '573578857813-ufs2jvgf44h2dro87u6tqa6d8h4gg965.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+function handleAuthClick() {
+  gapi.load('client:auth2', () => {
+    gapi.client.init({
+      clientId: CLIENT_ID,
+      scope: SCOPES
+    }).then(() => {
+      gapi.auth2.getAuthInstance().signIn().then(user => {
+        const accessToken = gapi.auth.getToken().access_token;
+        uploadStudentsToDrive(accessToken);
+      });
+    });
+  });
+}
+
+function uploadStudentsToDrive(accessToken) {
+  const fileContent = JSON.stringify(students, null, 2);
+  const metadata = {
+    name: 'deneme_analiz_verileri.json',
+    mimeType: 'application/json'
+  };
+
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', new Blob([fileContent], { type: 'application/json' }));
+
+  fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+    body: form
+  })
+  .then(res => res.json())
+  .then(val => {
+    console.log("Drive'a yüklendi:", val);
+    alert("Veriler Google Drive'a başarıyla kaydedildi ✔️");
+  })
+  .catch(err => {
+    console.error("Drive yükleme hatası:", err);
+    alert("Drive'a veri kaydedilirken bir hata oluştu ❌");
+  });
+}
 
 const pastelColors = ["#FFD1DC", "#B5FFFC", "#FDFD96", "#C1FFD7", "#E2C2FF", "#FFFACD", "#B7EDFA", "#E3F9DA", "#FFD6C6"];
 

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Privacy Policy — Deneme Analiz V3</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;line-height:1.6;margin:24px;color:#222}
+    header{margin-bottom:16px}
+    h1{font-size:20px;margin:0 0 10px}
+    .muted{color:#666;font-size:14px}
+    section{margin-top:12px}
+    footer{margin-top:24px;color:#666;font-size:13px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Privacy Policy — Deneme Analiz V3</h1>
+    <div class="muted">Son güncelleme: 2025-10-18</div>
+  </header>
+
+  <section>
+    <h2>1. Genel</h2>
+    <p>Deneme Analiz V3 uygulaması (bundan sonra "Uygulama"), öğrencilerin deneme verilerini yerel olarak tarayıcıda (localStorage) saklayan basit bir araçtır. Kullanıcılar verilerini isteğe bağlı olarak Google Drive'a kaydedebilir veya Drive'dan yükleyebilir.</p>
+  </section>
+
+  <section>
+    <h2>2. Hangi veriler toplanır</h2>
+    <ul>
+      <li>Öğrenci bilgileri: ad, soyad, bölüm (Sayısal/Sözel/Eşit Ağırlık).</li>
+      <li>Deneme verileri: deneme tarihi, oturum (TYT/AYT), derslere ait doğru/yanlış/net sayıları ve hesaplanan toplam net.</li>
+      <li>Uygulama tarafından istem dışı herhangi bir kişisel veri toplanmaz.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>3. Verilerin saklanması</h2>
+    <p>Uygulama verileri varsayılan olarak kullanıcının tarayıcısında <code>localStorage</code> içinde saklar. Bu veriler tarayıcı silinmediği sürece kullanıcı cihazında kalır.</p>
+  </section>
+
+  <section>
+    <h2>4. Google Drive entegrasyonu</h2>
+    <p>Kullanıcı dilerse Uygulama aracılığıyla verilerini JSON dosyası olarak Google Drive'a kaydedebilir. Bu işlem için kullanıcıdan Google izinleri istenir. Uygulama yalnızca kullanıcı tarafından açıkça başlatılan yükleme/indirme işlemlerinde Drive'a erişir.</p>
+    <p>İstenen başlıca izinler:</p>
+    <ul>
+      <li><strong>drive.file</strong>: Uygulamanın oluşturduğu veya kullanıcı tarafından seçilen dosyalara erişim. Uygulama başka Drive içeriğine erişmez.</li>
+      <li><strong>drive.readonly</strong> (isteğe bağlı): Kullanıcının daha önce kaydettiği uygun JSON dosyalarını listelemek ve indirmek için kullanılır.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>5. Veri paylaşımı</h2>
+    <p>Kullanıcının onayı olmadan veriler üçüncü şahıslarla paylaşılmaz. Drive'a kaydetme işlemi kullanıcı tarafından başlatılır; bu dosyalar Google Drive hesabınıza ait olur.</p>
+  </section>
+
+  <section>
+    <h2>6. Güvenlik</h2>
+    <p>Uygulama verileri tarayıcıda saklar; sunucu tarafı bir depolama veya işlem yapılmamaktadır. Kullanıcıların Google hesabı ile yapılan işlemler Google'ın güvenli altyapısı üzerinden gerçekleşir.</p>
+  </section>
+
+  <section>
+    <h2>7. İletişim</h2>
+    <p>Herhangi bir soru, sorun veya veri talepleri için: <a href="mailto:faruk2001galatasaray15@gmail.com">faruk2001galatasaray15@gmail.com</a></p>
+  </section>
+
+  <footer>
+    Bu gizlilik politikası örnek amaçlıdır; uygulamayı üretime alırken hukuki gerekliliklere uyduğunuzdan emin olun.
+  </footer>
+</body>
+</html>
+````markdown name=oauth_consent_screen_instructions.md
+```markdown
+# OAuth Consent Screen & Credentials — Adım Adım (Deneme Analiz V3)
+
+Tarih: 2025-10-18
+
+Aşağıda Google Cloud Console'da OAuth Consent Screen ve Credentials ayarlarını nasıl dolduracağınız, hangi alanlara ne yazacağınız, ayrıca kopyala‑yapıştır yapabileceğiniz "scope justification" ve demo video script'i yer alıyor.
+
+---
+
+## 1) Proje ve genel bilgiler
+- Console: https://console.cloud.google.com
+- Yeni proje oluşturun veya mevcut projeyi seçin.
+- Proje adı önerisi: `Deneme-Analiz-V3`
+
+## 2) OAuth consent screen (APIs & Services → OAuth consent screen)
+- App type: `External`
+- App name: `Deneme Analiz V3`
+- User support email: `faruk2001galatasaray15@gmail.com`
+- Developer contact email: `faruk2001galatasaray15@gmail.com`
+- App logo: (opsiyonel) 120x120 PNG yükleyebilirsiniz.
+- Authorized domains:
+  - Üretimde kullanacağınız domain varsa ekleyin (ör. `yourdomain.com`).
+  - Localhost genelde Authorized domains listesine eklenmez; test için **Test users** kullanacağız.
+- Privacy policy URL:
+  - Örnek: `https://yourdomain.com/privacy_policy.html`
+  - (Eğer GitHub Pages kullanacaksanız: `https://<github-username>.github.io/<repo>/privacy_policy.html`)
+- Terms of Service URL: (opsiyonel ama tavsiye edilir)
+
+### Scopes (İzinler) — ekleyin:
+- `https://www.googleapis.com/auth/drive.file`
+  - Tip: sensitive
+  - Justification: "Uygulama, kullanıcının oluşturduğu deneme verilerini JSON olarak Google Drive'a kaydetmek için drive.file scope'una ihtiyaç duyar. Bu scope yalnızca uygulamanın oluşturduğu veya kullanıcı tarafından seçilen dosyalara erişim sağlar."
+- (Opsiyonel) `https://www.googleapis.com/auth/drive.readonly`
+  - Justification: "Kullanıcının Drive'ında kaydedilmiş JSON verilerini listelemek ve indirmek için okunma yetkisi gerekir. Uygulama bu yetkiyi yalnızca kullanıcı tarafından seçilen dosyaları okumak için kullanır."
+
+> Not: Sadece gerçekten gerekli scope'ları ekleyin. `drive.file` çoğu kullanım için yeterlidir ve doğrulama sürecini daha kolay hale getirir.
+
+### Publishing / Test mode
+- Geliştirme ve ilk testler için: `Publishing status` → **Testing**
+- Test users: buraya kendi Google hesabınızı ekleyin (ör. `farukncr58@gmail.com` ve/veya `faruk2001galatasaray15@gmail.com`)
+  - Testing modunda eklenen test kullanıcıları uygulamayı doğrulama beklemeden kullanabilir.
+
+## 3) Credentials (APIs & Services → Credentials)
+- Create Credentials → **OAuth client ID**
+  - Application type: `Web application`
+  - Name: `DenemeAnalizV3 Web Client`
+  - Authorized JavaScript origins:
+    - `http://localhost:8000`  (yerelde test için)
+    - `https://<production-domain>`  (üretim için, ör: `https://yourdomain.com`)
+  - Authorized redirect URIs:
+    - Eğer Authorization Code flow veya özel callback kullanıyorsanız ekleyin:
+      - `http://localhost:8000/oauth2callback`
+      - `https://<production-domain>/oauth2callback`
+    - Not: Google Identity Services token client (client-side) çoğu durumda doğrudan redirect URI gerektirmez; yine de backend kodu kullanıyorsanız ekleyin.
+- Oluşturduktan sonra `CLIENT_ID` değerini kopyalayın ve uygulamanızdaki ilgili değişkene yapıştırın.
+
+## 4) Drive API etkinleştirme
+- APIs & Services → Library → `Google Drive API` → **Enable**
+
+## 5) Test & doğrulama
+- Yerel sunucu başlatın:
+  - Python: `python -m http.server 8000`
+  - Açın: `http://localhost:8000/deneme_analiz_v3_with_drive.html`
+- OAuth akışı:
+  - "Google ile Giriş & Drive'a Kaydet" butonuna tıklayın.
+  - Eğer test users listesine ekliyseniz izin ekranı doğrudan çalışmalı.
+  - Eğer "This app isn't verified" çıkarsa, `Gelişmiş → deneye devam et (unsafe)` ile devam edebilirsiniz (sadece kendiniz test ediyorsanız).
+
+## 6) Submit for verification (production)
+- Eğer uygulamayı public olarak sunacaksanız `Submit for verification` butonunu kullanın.
+- Google sizden isteyebilir:
+  - Privacy policy URL (herkese açık)
+  - Authorized domain doğrulaması (Search Console)
+  - Scope justification (yukarıdaki metinleri kullanabilirsiniz)
+  - Demo video linki (aşağıdaki script'i kullanarak kısa bir video hazırlayın)
+  - Test kullanıcı hesapları (gerekirse)
+
+---
+
+## Kopyalanabilir metinler
+
+### Privacy policy (kısa açıklama — consent formda kullanmak için)
+"Uygulama tarayıcıda yerel olarak öğrenci ve deneme verilerini saklar. Kullanıcı isteğiyle bu veriler Google Drive'a JSON dosyası olarak kaydedilebilir veya Drive'dan yüklenebilir. Uygulama yalnızca kullanıcı tarafından onaylanan dosyalara erişir."
+
+### Scope justification (kopyala-yapıştır)
+- drive.file:
+  "Uygulama, kullanıcının oluşturduğu deneme verilerini JSON olarak Google Drive'a kaydetmek için drive.file scope'una ihtiyaç duyar. Bu scope sadece uygulamanın oluşturduğu dosyalara veya kullanıcı tarafından seçilen dosyalara erişim sağlar; uygulama kullanıcı Drive'ındaki diğer dosyalara erişmez."
+- drive.readonly:
+  "Kullanıcının Drive'ında kaydedilmiş JSON dosyalarını listelemek ve indirmek için okunma yetkisi gereklidir. Uygulama bu yetkiyi yalnızca kullanıcı tarafından seçilen dosyaları okumak için kullanır."
+
+### Demo video script (kısa, 1–2 dakika)
+1. Açılış (3–4 s): "Merhaba. Bu video Deneme Analiz V3 uygulamasının Google Drive entegrasyonunu gösterir."
+2. OAuth akışı (20 s):
+   - Uygulamayı `http://localhost:8000`'de açın.
+   - "Google ile Giriş & Drive'a Kaydet" butonuna tıklayın.
+   - Açılan Google izin ekranını gösterin (uygulama adı ve istenen izinler görünmeli) ve "İzin ver"e tıklayın.
+3. Upload testi (20 s):
+   - Bir öğrenci ve deneme ekleyin.
+   - "Drive'a Kaydet"e tıklayın.
+   - Uygulamanın sağ üstte başarılı yükleme geri bildirimi verdiğini gösterin.
+4. Download testi (20 s):
+   - "Drive'den Yükle (Dosya Seç)"e tıklayın.
+   - Listeden dosya seçip "Yükle" deyin; uygulamaya verilerin yüklendiğini gösterin.
+5. Kapanış (3–4 s): "Teşekkürler."
+
+---
+
+## 7) Hızlı sorun giderme
+- Origin/redirect hatası: Credentials → OAuth client → Authorized JavaScript origins ve Redirect URIs doğru girildi mi kontrol edin.
+- "This app isn't verified": Test users listesine Google hesabınızı ekleyin veya doğrulama sürecini başlatın.
+- Eğer client_id çalışmıyorsa: oluşturduğunuz OAuth client ID'yi uygulamadaki CLIENT_ID değişkenine yapıştırdığınızdan emin olun.
+
+---
+
+## Yardım teklifim
+Ben şu ek işleri yapabilirim:
+- Privacy policy dosyasını (hazır HTML) GitHub Pages’te yayımlamanız için adım‑adım rehber oluştururum.
+- OAuth Consent Screen'te yazmanız gereken alanları sizin adınıza tam bir "form doldurma" metni olarak hazırlarım (console'a kopyala-yapıştır).
+- Demo video için örnek ekran kaydı kaydetme komutları (OBS veya QuickTime ile) yazabilirim.
+
+Hangisini hemen hazırlamamı istersiniz? 

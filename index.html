@@ -1,208 +1,123 @@
 <!DOCTYPE html>
-
 <html lang="tr">
-
 <head>
-
   <meta charset="utf-8" />
-
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-
   <title>Deneme Analiz V3</title>
-<script src="https://apis.google.com/js/api.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
-
     :root{font-family:Inter,Arial,Helvetica,sans-serif}
-
     body{margin:16px;background:#fff;color:#111;transition:background 0.4s;}
-
     .dark{background:#0b0b0b;color:#eee}
-
     .colorful{transition:background 0.4s;}
-
     h1{margin:0 0 12px}
-
     .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-
     input[type="text"], select, input[type="date"], input[type="number"]{padding:6px;border:1px solid #ccc;border-radius:4px}
-
     button{padding:6px 8px;border-radius:6px;border:1px solid #888;background:#f0f0f0;cursor:pointer}
-
     button.secondary{background:#fff;border:1px solid #bbb}
-
     #studentList {margin-top:12px}
-
     .studentItem{padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
-
     .studentInfo{font-weight:600}
-
     .controls button{margin-left:6px}
-
     table{width:100%;border-collapse:collapse;margin-top:10px}
-
     th,td{border:1px solid #bbb;padding:6px;text-align:center;font-size:14px}
-
     .small{font-size:13px;padding:4px 6px}
-
     #audioToggle{position:fixed;right:12px;bottom:12px;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:#222;color:#fff;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.2)}
-
     #audioToggle.muted{background:#aaa;color:#222}
-
     .modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);overflow:auto;z-index:999}
-
     .card{background:#fff;padding:16px;border-radius:8px;max-width:820px;width:96%;box-shadow:0 8px 30px rgba(0,0,0,0.15)}
-
     .card h3{margin-top:0}
-
     .fieldRow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-
     label{display:flex;flex-direction:column;font-size:13px}
-
     .danger{background:#ffdddd;border-color:#ffaaaa}
-
     .right{margin-left:auto}
-
     .chartWrapper{overflow-x:auto;margin-top:12px;padding-bottom:8px}
-
     canvas{min-width:320px;max-height:300px}
-
     .successMsg {color:green; font-size:13px; margin-top:5px;}
-
     .toggleChartBtn {margin-bottom:4px;}
-
     .limitWarn {font-size:12px;color:red;}
-
     @media (max-width:600px){
-
       .card{max-width:99vw;}
-
       canvas{min-width:200px;}
-
     }
-
   </style>
-
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 </head>
-
 <body>
-
 <h1>Deneme Analiz V3</h1>
-
 <div class="row">
-
   <div>
-
     Tema:
-
     <button onclick="setTheme('light')">Beyaz</button>
-
     <button onclick="setTheme('dark')">Siyah</button>
-
     <button onclick="setTheme('colorful')">Renkli</button>
-
   </div>
-
   <div style="margin-left:auto">
-
     <audio id="bgAudio" src="background.mp3" loop></audio>
-
     <small style="opacity:0.8">Soundtrack</small>
-
   </div>
-
 </div>
-
 <hr/>
-
 <div class="card" style="margin-bottom:12px">
-
   <h3>Öğrenci Ekle</h3>
-
   <div class="fieldRow">
-
     <label>Adı <input id="inpName" type="text"></label>
-
     <label>Soyadı <input id="inpSurname" type="text"></label>
-
     <label>Bölümü
-
       <select id="inpType">
-
         <option value="Sayisal">Sayısal</option>
-
         <option value="Sozel">Sözel</option>
-
         <option value="EsitAgirlik">Eşit Ağırlık</option>
-
       </select>
-
     </label>
-
     <div class="right">
-
       <button onclick="addStudent()" class="small">Kaydet</button>
-
       <button onclick="clearAll()" class="small secondary">Tüm Verileri Sil</button>
-
     </div>
-
   </div>
-
   <div id="studentMsg"></div>
-
   <div style="font-size:13px;color:#555">Not: AYT denemesi eklerken öğrenci bölümü dikkate alınacak.</div>
-
 </div>
-
 <div class="card">
-
   <h3>Öğrenciler</h3>
-
   <div id="studentList"></div>
 </div>
-  
 <!-- Google Drive Entegrasyonu -->
 <div class="card">
   <h3>Google Drive Entegrasyonu</h3>
   <button onclick="handleAuthClick()">Google ile Giriş Yap ve Verileri Drive'a Kaydet</button>
+  <div id="googleDriveMsg"></div>
 </div>
-
 <div id="modal" class="modal" style="display:none" tabindex="-1">
-
   <div class="card" id="modalCard">
-
     <h3 id="modalTitle"></h3>
-
     <div id="modalBody"></div>
-
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px" id="modalFooter"></div>
-
   </div>
-
 </div>
-
 <div id="audioToggle" title="Müziği Aç/Kapa" onclick="toggleAudio()">🔈</div>
-
 <script>
 const CLIENT_ID = '573578857813-ufs2jvgf44h2dro87u6tqa6d8h4gg965.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
+let students = JSON.parse(localStorage.getItem('deneme_analiz_v3_students') || '[]');
+let modalStudentIdx = null, modalExamIdx = null;
+
+const pastelColors = ["#FFD1DC", "#B5FFFC", "#FDFD96", "#C1FFD7", "#E2C2FF", "#FFFACD", "#B7EDFA", "#E3F9DA", "#FFD6C6"];
+
 function handleAuthClick() {
-  gapi.load('client:auth2', () => {
-    gapi.client.init({
-      clientId: CLIENT_ID,
-      scope: SCOPES
-    }).then(() => {
-      gapi.auth2.getAuthInstance().signIn().then(user => {
-        const accessToken = gapi.auth.getToken().access_token;
-        uploadStudentsToDrive(accessToken);
-      });
-    });
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (response) => {
+      if (response.error) {
+        document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Google giriş hatası: ' + response.error + '</span>';
+        return;
+      }
+      uploadStudentsToDrive(response.access_token);
+    }
   });
+  tokenClient.requestAccessToken();
 }
 
 function uploadStudentsToDrive(accessToken) {
@@ -223,655 +138,355 @@ function uploadStudentsToDrive(accessToken) {
   })
   .then(res => res.json())
   .then(val => {
-    console.log("Drive'a yüklendi:", val);
-    alert("Veriler Google Drive'a başarıyla kaydedildi ✔️");
+    if (val.id) {
+      document.getElementById('googleDriveMsg').innerHTML = '<span style="color:green">Veriler Google Drive\'a başarıyla kaydedildi ✔️</span>';
+    } else {
+      document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Drive\'a kaydetme hatası: ' + (val.error?.message || 'Bilinmeyen hata') + '</span>';
+    }
   })
   .catch(err => {
-    console.error("Drive yükleme hatası:", err);
-    alert("Drive'a veri kaydedilirken bir hata oluştu ❌");
+    document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Drive\'a veri kaydedilirken bir hata oluştu ❌</span>';
   });
 }
 
-const pastelColors = ["#FFD1DC", "#B5FFFC", "#FDFD96", "#C1FFD7", "#E2C2FF", "#FFFACD", "#B7EDFA", "#E3F9DA", "#FFD6C6"];
-
 function setTheme(t){
-
   const body = document.body;
-
   if(t==='colorful'){
-
     let pastel = pastelColors[Math.floor(Math.random() * pastelColors.length)];
-
     body.className='colorful';
-
     body.style.background = pastel;
-
     body.style.color = '#222';
-
   }else if(t==='dark'){
-
     body.className='dark';
-
     body.style.background = '';
-
     body.style.color = '';
-
   }else{
-
     body.className='';
-
     body.style.background = '#fff';
-
     body.style.color = '#111';
-
   }
-
   localStorage.setItem('theme',t);
-
 }
 
 (function(){const t=localStorage.getItem('theme'); if(t) setTheme(t);})();
 
 const LS_KEY='deneme_analiz_v3_students';
 
-let students=JSON.parse(localStorage.getItem(LS_KEY)||'[]');
-
-let modalStudentIdx = null, modalExamIdx = null;
-
-const limits={
-
-  TYT:{Mat:40,Turkce:40,Sosyal:20,Fen:20},
-
-  AYT:{
-
-    Sayisal:{Matematik:40,Fizik:14,Kimya:13,Biyoloji:13},
-
-    Sozel:{Turkce:24,Tarih1:10,Cografya1:6,Tarih2:11,Cografya2:11,Felsefe:12,Din:6},
-
-    EsitAgirlik:{Matematik:40,Turkce:24,Tarih1:10,Cografya1:6}
-
-  }
-
-};
-
 function save(){localStorage.setItem(LS_KEY,JSON.stringify(students))}
-
 function uid(){return Date.now()+Math.floor(Math.random()*999)}
 
 const audio=document.getElementById('bgAudio'); const audioToggle=document.getElementById('audioToggle'); audio.volume=0.12; audio.muted=false; audioToggle.classList.remove('muted');
-
 async function tryAutoPlay(){try{await audio.play(); audioToggle.textContent='🔊'; audioToggle.classList.remove('muted');}catch(e){audioToggle.textContent='🔈'; audioToggle.classList.add('muted');}}
-
 tryAutoPlay();
-
 function toggleAudio(){if(audio.paused){audio.play(); audioToggle.textContent='🔊'; audioToggle.classList.remove('muted');}else{audio.pause();audioToggle.textContent='🔈';audioToggle.classList.add('muted');}}
 
 function addStudent(){
-
   const name=document.getElementById('inpName').value.trim();
-
   const surname=document.getElementById('inpSurname').value.trim();
-
   const type=document.getElementById('inpType').value;
-
   const msgEl=document.getElementById('studentMsg');
-
   msgEl.innerHTML='';
-
   if(!name||!surname){msgEl.innerHTML='<span style="color:red">Ad ve soyad gerekli</span>';return;}
-
   if(students.some(s=>s.name.toLowerCase()===name.toLowerCase()&&s.surname.toLowerCase()===surname.toLowerCase())){
-
     msgEl.innerHTML='<span style="color:red">Bu isimde bir öğrenci zaten var.</span>'; return;
-
   }
-
   students.push({id:uid(),name,surname,type,exams:[]});
-
   save(); renderStudents();
-
   document.getElementById('inpName').value=''; document.getElementById('inpSurname').value='';
-
   msgEl.innerHTML='<span class="successMsg">Öğrenci eklendi ✔️</span>';
-
 }
 
 function clearAll(){
-
   if(confirm('Tüm verileri silmek istediğine emin misin?')){
-
     students=[];save();renderStudents(); closeModal();
-
   }
-
 }
 
 function renderStudents(){
-
   const container=document.getElementById('studentList'); container.innerHTML='';
-
   if(students.length===0){
-
     container.innerHTML='<div style="color:#666">Henüz öğrenci yok.</div>'; return;
-
   }
-
   students.forEach((s,idx)=>{
-
     const div=document.createElement('div'); div.className='studentItem';
-
     const left=document.createElement('div'); left.innerHTML=`<div class="studentInfo">${s.name} ${s.surname} <small style="font-weight:400">(${s.type})</small></div>
-
     <div style="font-size:13px;color:#444">${s.exams?.length||0} deneme</div>`;
-
     const right=document.createElement('div'); right.className='controls';
-
     const btnDetail=document.createElement('button'); btnDetail.textContent='Detay Gör'; btnDetail.onclick=function(){showExams(idx);};
-
     const btnDelete=document.createElement('button'); btnDelete.textContent='Sil'; btnDelete.className='danger'; btnDelete.onclick=function(){students.splice(idx,1); save(); renderStudents();};
-
     right.appendChild(btnDetail); right.appendChild(btnDelete); div.appendChild(left); div.appendChild(right); container.appendChild(div);
-
   });
-
 }
 
 // Modal helpers (Escape ile kapatma)
-
 function showModal(title,bodyHtml,footerHtml){
-
   document.getElementById('modalTitle').innerHTML=title;
-
   document.getElementById('modalBody').innerHTML=bodyHtml;
-
   document.getElementById('modalFooter').innerHTML=footerHtml;
-
   const modal=document.getElementById('modal');
-
   modal.style.display='flex'; modal.focus();
-
 }
-
 function closeModal(){
-
   document.getElementById('modal').style.display='none';
-
   modalStudentIdx = null; modalExamIdx = null;
-
 }
-
 document.getElementById('modal').addEventListener('keydown',function(e){
-
   if(e.key==='Escape') closeModal();
-
 });
 
 // Grafik aç/kapat fonksiyonu
-
 function toggleChart(chartId, btnId) {
-
   const chartDiv = document.getElementById(chartId).parentNode;
-
   const btn = document.getElementById(btnId);
-
   if (chartDiv.style.display === 'none') {
-
     chartDiv.style.display = '';
-
     btn.textContent = 'Grafiği Kapat';
-
-    // Yeniden çizmek gerekirse burada yeniden çağırabilirsin
-
   } else {
-
     chartDiv.style.display = 'none';
-
     btn.textContent = 'Grafiği Aç';
-
   }
-
 }
 
 // Öğrenci detay ve deneme ekleme arayüzü
-
 function showExams(idx){
-
   modalStudentIdx = idx;
-
   const student = students[idx];
-
   let tytDenemeler = student.exams.filter(e=>e.session==='TYT').sort((a,b)=>a.date.localeCompare(b.date));
-
   let aytDenemeler = student.exams.filter(e=>e.session==='AYT').sort((a,b)=>a.date.localeCompare(b.date));
 
   function tableHtml(denemeler, dersler, session){
-
     if(denemeler.length===0)
-
       return '<tr><td colspan="99" style="color:#888">Henüz deneme yok.</td></tr>';
-
     return denemeler.map((ex,i)=>{
-
       let dersTd = dersler.map(ders=>{
-
         let d = ex.nets[ders]||{};
-
         return `<td>
-
           <span title="Doğru">${d.dogru??'-'}</span> /
-
           <span title="Yanlış">${d.yanlis??'-'}</span> /
-
           <b>${d.net??'-'}</b>
-
         </td>`;
-
       }).join('');
-
       return `<tr>
-
         <td>${ex.date||'-'}</td>
-
         ${dersTd}
-
         <td><b>${ex.toplamNet??'-'}</b></td>
-
         <td>
-
           <button onclick="editExam(${idx},${student.exams.indexOf(ex)})" class="small">Düzenle</button>
-
           <button onclick="deleteExam(${idx},${student.exams.indexOf(ex)})" class="small danger">Sil</button>
-
         </td>
-
       </tr>`;
-
     }).join('');
-
   }
 
   let tytDersler = getDerslerFor(student.type, 'TYT');
-
   let aytDersler = getDerslerFor(student.type, 'AYT');
-
   let bodyHtml = `
-
     <button onclick="addExamForm(${idx})" class="small" style="margin-bottom:10px">+ Deneme Ekle</button>
-
     <div>
-
       <h4>TYT Denemeleri</h4>
-
       <table>
-
         <tr><th>Tarih</th>${tytDersler.map(d=>`<th>${d}</th>`).join('')}<th>Toplam Net</th><th>İşlem</th></tr>
-
         ${tableHtml(tytDenemeler, tytDersler, 'TYT')}
-
       </table>
-
       <button onclick="toggleChart('tytChart','btn_tytChart')" class="small secondary toggleChartBtn" id="btn_tytChart">Grafiği Aç</button>
-
       <div class="chartWrapper" style="display:none;"><canvas id="tytChart"></canvas></div>
-
     </div>
-
     <div>
-
       <h4>AYT Denemeleri</h4>
-
       <table>
-
         <tr><th>Tarih</th>${aytDersler.map(d=>`<th>${d}</th>`).join('')}<th>Toplam Net</th><th>İşlem</th></tr>
-
         ${tableHtml(aytDenemeler, aytDersler, 'AYT')}
-
       </table>
-
       <button onclick="toggleChart('aytChart','btn_aytChart')" class="small secondary toggleChartBtn" id="btn_aytChart">Grafiği Aç</button>
-
       <div class="chartWrapper" style="display:none;"><canvas id="aytChart"></canvas></div>
-
     </div>
-
   `;
-
   showModal(
-
     `${student.name} ${student.surname} - Denemeleri`,
-
     bodyHtml,
-
     `<button onclick="closeModal()" class="secondary">Kapat</button>`
-
   );
-
   setTimeout(function(){
-
     drawChart('tytChart', tytDenemeler);
-
     drawChart('aytChart', aytDenemeler);
-
   },50);
-
 }
 
 function drawChart(canvasId, denemeler){
-
   const labels = denemeler.map(ex=>ex.date||'');
-
   const nets = denemeler.map(ex=>Number(ex.toplamNet)||0);
-
   const bgColor = pastelColors[Math.floor(Math.random()*pastelColors.length)];
-
   const ctx = document.getElementById(canvasId).getContext('2d');
-
   new Chart(ctx, {
-
     type: 'line',
-
     data: { labels: labels, datasets: [{
-
       label:'Toplam Net',
-
       data:nets,
-
       borderColor:'#007bff',
-
       backgroundColor:bgColor,
-
       fill:true,
-
       tension:0.3,
-
       pointBackgroundColor: bgColor,
-
       pointBorderColor:'#333',
-
     }] },
-
     options: {
-
       responsive:true,
-
       plugins:{legend:{display:true}},
-
       scales: {
-
         y: { beginAtZero:true }
-
       }
-
     }
-
   });
-
 }
 
 // Deneme ekleme/düzenleme formu
-
 function addExamForm(idx){
-
   modalStudentIdx = idx;
-
   modalExamIdx = null;
-
   var oturumOpt = `<option value="TYT">TYT</option><option value="AYT">AYT</option>`;
-
   showModal("Deneme Ekle",
-
     `<label>Oturum
-
       <select id="examSession">${oturumOpt}</select>
-
     </label>
-
     <label>Tarih <input type="date" id="examDate"></label>
-
     <div id="dersFields"></div>
-
     <div id="examMsg"></div>
-
     `,
-
     `<button onclick="saveExam()" id="modalSave">Kaydet</button>
-
     <button onclick="showExams(${idx})" class="secondary">Geri</button>`
-
   );
-
   document.getElementById('examSession').addEventListener('change', function(){renderNetFields();});
-
   renderNetFields();
-
 }
 
 function editExam(idx,exIdx){
-
   modalStudentIdx = idx;
-
   modalExamIdx = exIdx;
-
   const student = students[idx];
-
   const exam = student.exams[exIdx];
-
   var oturumOpt = `<option value="TYT"${exam.session==='TYT'?' selected':''}>TYT</option>
-
                    <option value="AYT"${exam.session==='AYT'?' selected':''}>AYT</option>`;
-
   showModal("Deneme Düzenle",
-
     `<label>Oturum
-
       <select id="examSession">${oturumOpt}</select>
-
     </label>
-
     <label>Tarih <input type="date" id="examDate" value="${exam.date}"></label>
-
     <div id="dersFields"></div>
-
     <div id="examMsg"></div>
-
     `,
-
     `<button onclick="saveExam()" id="modalSave">Kaydet</button>
-
      <button onclick="showExams(${idx})" class="secondary">Geri</button>`
-
   );
-
   document.getElementById('examSession').addEventListener('change', function(){renderNetFields(exIdx);});
-
   renderNetFields(exIdx);
-
 }
 
 // Formda her ders için doğru, yanlış ve otomatik net hesaplama
-
 function renderNetFields(examIndex){
-
   const idx = modalStudentIdx;
-
   const exIdx = typeof examIndex==='number'?examIndex:null;
-
   const student = students[idx];
-
   const session = document.getElementById('examSession').value;
-
   const dersler = getDerslerFor(student.type, session);
-
   let html = '';
-
   let nets = exIdx!==null ? student.exams[exIdx].nets : {};
-
   dersler.forEach(ders => {
-
     let dogru = nets[ders]?.dogru ?? '';
-
     let yanlis = nets[ders]?.yanlis ?? '';
-
     let net = dogru!=='' && yanlis!=='' ? (dogru - (yanlis / 4)).toFixed(2) : '';
-
     let lim = getLimitForField(session,student.type,ders);
-
     html += `<label>${ders}
-
       <div style="display:flex;gap:4px;">
-
         <input type="number" id="dogru_${ders}" min="0" max="${lim}" value="${dogru}" placeholder="Doğru" oninput="inputLimitCheck('${ders}',${lim});calcNet('${ders}')">
-
         <input type="number" id="yanlis_${ders}" min="0" max="${lim}" value="${yanlis}" placeholder="Yanlış" oninput="inputLimitCheck('${ders}',${lim});calcNet('${ders}')">
-
         <input type="number" id="net_${ders}" value="${net}" readonly style="width:60px;">
-
       </div>
-
       <div class="limitWarn" id="limitWarn_${ders}"></div>
-
     </label>`;
-
   });
-
   document.getElementById('dersFields').innerHTML = html;
-
 }
 
 function inputLimitCheck(ders, lim){
-
   let dogru = Number(document.getElementById('dogru_' + ders).value) || 0;
-
   let yanlis = Number(document.getElementById('yanlis_' + ders).value) || 0;
-
   let warn = document.getElementById('limitWarn_' + ders);
-
   if(dogru + yanlis > lim){
-
     warn.textContent = `Doğru+Yanlış toplamı en fazla ${lim} olabilir!`;
-
   } else {
-
     warn.textContent = '';
-
   }
-
 }
 
 function calcNet(ders) {
-
   let dogru = Number(document.getElementById('dogru_' + ders).value) || 0;
-
   let yanlis = Number(document.getElementById('yanlis_' + ders).value) || 0;
-
   let net = (dogru - (yanlis / 4)).toFixed(2);
-
   document.getElementById('net_' + ders).value = net;
-
 }
 
 function saveExam(){
-
   const idx = modalStudentIdx;
-
   const student = students[idx];
-
   const session = document.getElementById('examSession').value;
-
   const date = document.getElementById('examDate').value;
-
   const dersler = getDerslerFor(student.type,session);
-
   let nets = {}, msgEl=document.getElementById('examMsg');
-
   msgEl.innerHTML='';
-
   let hasError = false;
-
   let toplamNet = 0;
-
   dersler.forEach(ders=>{
-
     const lim = getLimitForField(session,student.type,ders);
-
     let dogru = Number(document.getElementById('dogru_' + ders).value) || 0;
-
     let yanlis = Number(document.getElementById('yanlis_' + ders).value) || 0;
-
     if(isNaN(dogru) || dogru<0 || dogru>lim){hasError=true;msgEl.innerHTML += `<span style="color:red">${ders} doğru sayısı 0 ile ${lim} arasında olmalı.<br></span>`;}
-
     if(isNaN(yanlis) || yanlis<0 || yanlis>lim){hasError=true;msgEl.innerHTML += `<span style="color:red">${ders} yanlış sayısı 0 ile ${lim} arasında olmalı.<br></span>`;}
-
     if(dogru + yanlis > lim){hasError=true;msgEl.innerHTML += `<span style="color:red">${ders} için doğru+yanlış toplamı en fazla ${lim} olabilir.<br></span>`;}
-
     let net = (dogru - (yanlis / 4)).toFixed(2);
-
     nets[ders] = {dogru, yanlis, net};
-
     toplamNet += Number(net);
-
   });
-
   if(hasError) return;
-
   if(modalExamIdx!==null){
-
     student.exams[modalExamIdx] = {session,date,nets,toplamNet:toplamNet.toFixed(2)};
-
     msgEl.innerHTML='<span class="successMsg">Deneme güncellendi ✔️</span>';
-
   }else{
-
     student.exams.push({session,date,nets,toplamNet:toplamNet.toFixed(2)});
-
     msgEl.innerHTML='<span class="successMsg">Deneme eklendi ✔️</span>';
-
   }
-
   save(); setTimeout(function(){showExams(idx);},600);
-
 }
 
 function deleteExam(idx,exIdx){
-
   if(confirm('Bu denemeyi silmek istiyor musun?')){
-
     students[idx].exams.splice(exIdx,1);
-
     save(); showExams(idx);
-
   }
-
 }
 
 function getDerslerFor(studentType,oturum){
-
   if(oturum==='TYT') return ['Mat','Turkce','Sosyal','Fen'];
-
   else if(studentType==='Sayisal') return ['Matematik','Fizik','Kimya','Biyoloji'];
-
   else if(studentType==='Sozel') return ['Turkce','Tarih1','Cografya1','Tarih2','Cografya2','Felsefe','Din'];
-
   else if(studentType==='EsitAgirlik') return ['Matematik','Turkce','Tarih1','Cografya1'];
-
   return [];
-
 }
 
 function getLimitForField(oturum,studentType,field){
-
+  const limits={
+    TYT:{Mat:40,Turkce:40,Sosyal:20,Fen:20},
+    AYT:{
+      Sayisal:{Matematik:40,Fizik:14,Kimya:13,Biyoloji:13},
+      Sozel:{Turkce:24,Tarih1:10,Cografya1:6,Tarih2:11,Cografya2:11,Felsefe:12,Din:6},
+      EsitAgirlik:{Matematik:40,Turkce:24,Tarih1:10,Cografya1:6}
+    }
+  };
   if(oturum==='TYT') return limits.TYT[field]??null;
-
   const map=limits.AYT[studentType]||{};
-
   return map[field]??(map[field.replace(/ı/g,'i')]??null);
-
 }
 
 renderStudents();
-
 </script>
-
 </body>
-
 </html>

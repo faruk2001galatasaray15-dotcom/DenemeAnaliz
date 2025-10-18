@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Deneme Analiz V3</title>
+  <title>Deneme Analiz V3 - Gelişmiş UX</title>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     :root{font-family:Inter,Arial,Helvetica,sans-serif}
@@ -14,6 +14,7 @@
     .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     input[type="text"], select, input[type="date"], input[type="number"]{padding:6px;border:1px solid #ccc;border-radius:4px}
     button{padding:6px 8px;border-radius:6px;border:1px solid #888;background:#f0f0f0;cursor:pointer}
+    button.primary{background:#007bff;color:#fff;border-color:#0062d6}
     button.secondary{background:#fff;border:1px solid #bbb}
     #studentList {margin-top:12px}
     .studentItem{padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
@@ -25,7 +26,7 @@
     #audioToggle{position:fixed;right:12px;bottom:12px;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:#222;color:#fff;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.2)}
     #audioToggle.muted{background:#aaa;color:#222}
     .modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);overflow:auto;z-index:999}
-    .card{background:#fff;padding:16px;border-radius:8px;max-width:820px;width:96%;box-shadow:0 8px 30px rgba(0,0,0,0.15)}
+    .card{background:#fff;padding:16px;border-radius:8px;max-width:920px;width:96%;box-shadow:0 8px 30px rgba(0,0,0,0.15)}
     .card h3{margin-top:0}
     .fieldRow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
     label{display:flex;flex-direction:column;font-size:13px}
@@ -36,15 +37,30 @@
     .successMsg {color:green; font-size:13px; margin-top:5px;}
     .toggleChartBtn {margin-bottom:4px;}
     .limitWarn {font-size:12px;color:red;}
+    .muted {opacity:0.6}
+    .spinner {display:inline-block;padding:4px 8px;border-radius:6px;background:#f3f3f3;margin-left:8px}
+    .fileListItem{padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+    .metaSmall{font-size:12px;color:#666}
+    /* Toasts */
+    #toasts { position: fixed; top: 16px; right: 16px; z-index: 2000; display:flex; flex-direction:column; gap:8px; }
+    .toast { background:#222;color:#fff;padding:10px 12px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.18);opacity:0;transform:translateY(-8px);transition:all .18s ease; display:flex; gap:8px; align-items:center; }
+    .toast.visible { opacity:1; transform:translateY(0); }
+    .toast.success{ background: #198754; }
+    .toast.error{ background: #dc3545; }
+    .toast.info{ background: #0d6efd; }
+    .toast .action { margin-left:8px; background: rgba(255,255,255,0.15); border-radius:6px; padding:4px 6px; cursor:pointer; font-weight:600; }
+    /* Offline indicator */
+    #offlineIndicator { position:fixed; left:12px; bottom:12px; padding:6px 10px; border-radius:8px; background:#e9ecef; color:#333; font-size:13px; box-shadow:0 6px 18px rgba(0,0,0,0.08); z-index:999; }
     @media (max-width:600px){
       .card{max-width:99vw;}
       canvas{min-width:200px;}
+      #toasts { left: 12px; right: auto; top: 12px; }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<h1>Deneme Analiz V3</h1>
+<h1>Deneme Analiz V3 - Gelişmiş UX</h1>
 <div class="row">
   <div>
     Tema:
@@ -61,141 +77,89 @@
 <div class="card" style="margin-bottom:12px">
   <h3>Öğrenci Ekle</h3>
   <div class="fieldRow">
-    <label>Adı <input id="inpName" type="text"></label>
-    <label>Soyadı <input id="inpSurname" type="text"></label>
+    <label>Adı <input id="inpName" type="text" oninput="scheduleSaveLocal()"></label>
+    <label>Soyadı <input id="inpSurname" type="text" oninput="scheduleSaveLocal()"></label>
     <label>Bölümü
-      <select id="inpType">
+      <select id="inpType" onchange="scheduleSaveLocal()">
         <option value="Sayisal">Sayısal</option>
         <option value="Sozel">Sözel</option>
         <option value="EsitAgirlik">Eşit Ağırlık</option>
       </select>
     </label>
     <div class="right">
-      <button onclick="addStudent()" class="small">Kaydet</button>
+      <button onclick="addStudent()" class="small primary" id="btnAddStudent">Kaydet</button>
       <button onclick="clearAll()" class="small secondary">Tüm Verileri Sil</button>
     </div>
   </div>
-  <div id="studentMsg"></div>
+  <div id="studentMsg" aria-live="polite"></div>
   <div style="font-size:13px;color:#555">Not: AYT denemesi eklerken öğrenci bölümü dikkate alınacak.</div>
 </div>
+
 <div class="card">
   <h3>Öğrenciler</h3>
   <div id="studentList"></div>
 </div>
+
 <!-- Google Drive Entegrasyonu -->
 <div class="card">
   <h3>Google Drive Entegrasyonu</h3>
-  <button onclick="handleAuthClick()">Google ile Giriş Yap ve Verileri Drive'a Kaydet</button>
-  <button onclick="handleDriveImport()" style="margin-left:8px;">Google Drive’dan Verileri Yükle</button>
-  <div id="googleDriveMsg"></div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button id="btnSaveDrive" onclick="startAuthFor('upload')" class="primary">Google ile Giriş & Kaydet</button>
+    <button id="btnImportDrive" onclick="startAuthFor('import')">Google Drive’dan Yükle</button>
+    <button id="btnListFiles" onclick="startAuthFor('list')">Drive Dosyalarını Listele</button>
+    <label style="margin-left:12px;">
+      <input id="autoImport" type="checkbox"> Açılışta otomatik Drive kontrolü
+    </label>
+    <label style="margin-left:auto;">
+      <input id="keepBackup" type="checkbox"> Her yüklemede timestamp'li yedek bırak
+    </label>
+  </div>
+  <div id="googleDriveMsg" style="margin-top:8px" aria-live="polite"></div>
+  <div id="accountInfo" style="margin-top:6px;font-size:13px;color:#333"></div>
 </div>
-<div id="modal" class="modal" style="display:none" tabindex="-1">
+
+<!-- Modal -->
+<div id="modal" class="modal" style="display:none" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="card" id="modalCard">
     <h3 id="modalTitle"></h3>
     <div id="modalBody"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px" id="modalFooter"></div>
   </div>
 </div>
-<div id="audioToggle" title="Müziği Aç/Kapa" onclick="toggleAudio()">🔈</div>
-<script>
-const CLIENT_ID = '573578857813-ufs2jvgf44h2dro87u6tqa6d8h4gg965.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
-let students = JSON.parse(localStorage.getItem('deneme_analiz_v3_students') || '[]');
+<!-- Toasts -->
+<div id="toasts" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Offline indicator -->
+<div id="offlineIndicator">Çevrimiçi</div>
+
+<!-- Audio toggle -->
+<div id="audioToggle" title="Müziği Aç/Kapa" onclick="toggleAudio()">🔈</div>
+
+<script>
+/* -------------------------
+  Konfigürasyon ve durum
+   ------------------------- */
+const CLIENT_ID = '573578857813-ufs2jvgf44h2dro87u6tqa6d8h4gg965.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
+const LS_KEY = 'deneme_analiz_v3_students';
+const LS_FILE_ID = 'deneme_analiz_drive_file_id';
+const LS_FILE_MTIME = 'deneme_analiz_drive_file_mtime';
+const LS_AUTO_IMPORT = 'deneme_analiz_auto_import';
+const LS_ACCOUNT = 'deneme_analiz_drive_account';
+const LS_ONBOARD = 'deneme_analiz_onboard_shown';
+
+let students = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
 let modalStudentIdx = null, modalExamIdx = null;
+let lastDeleted = null;
+let saveTimer = null;
+let busyCount = 0; // for disabling buttons during network ops
 
 const pastelColors = ["#FFD1DC", "#B5FFFC", "#FDFD96", "#C1FFD7", "#E2C2FF", "#FFFACD", "#B7EDFA", "#E3F9DA", "#FFD6C6"];
 
-function handleAuthClick() {
-  const tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (response) => {
-      if (response.error) {
-        document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Google giriş hatası: ' + response.error + '</span>';
-        return;
-      }
-      uploadStudentsToDrive(response.access_token);
-    }
-  });
-  tokenClient.requestAccessToken();
-}
-
-// **EKLENDİ**: Drive’dan dosya bulma ve indirme fonksiyonları
-function handleDriveImport() {
-  const tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (response) => {
-      if (response.error) {
-        document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Google giriş hatası: ' + response.error + '</span>';
-        return;
-      }
-      downloadStudentsFromDrive(response.access_token);
-    }
-  });
-  tokenClient.requestAccessToken();
-}
-function listDriveFiles(accessToken, callback) {
-  fetch('https://www.googleapis.com/drive/v3/files?q=name="deneme_analiz_verileri.json"&fields=files(id,name)', {
-    headers: { 'Authorization': 'Bearer ' + accessToken }
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.files && data.files.length > 0) {
-      callback(data.files[0].id);
-    } else {
-      document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Drive\'da veri dosyası bulunamadı!</span>';
-    }
-  });
-}
-function downloadStudentsFromDrive(accessToken) {
-  listDriveFiles(accessToken, function(fileId) {
-    fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
-      headers: { 'Authorization': 'Bearer ' + accessToken }
-    })
-    .then(res => res.json())
-    .then(data => {
-      localStorage.setItem('deneme_analiz_v3_students', JSON.stringify(data));
-      students = data;
-      renderStudents();
-      document.getElementById('googleDriveMsg').innerHTML = '<span style="color:green">Veriler Google Drive\'dan başarıyla yüklendi ✔️</span>';
-    })
-    .catch(err => {
-      document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Drive\'dan veri alınırken hata oluştu!</span>';
-    });
-  });
-}
-
-function uploadStudentsToDrive(accessToken) {
-  const fileContent = JSON.stringify(students, null, 2);
-  const metadata = {
-    name: 'deneme_analiz_verileri.json',
-    mimeType: 'application/json'
-  };
-
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-  form.append('file', new Blob([fileContent], { type: 'application/json' }));
-
-  fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method: 'POST',
-    headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
-    body: form
-  })
-  .then(res => res.json())
-  .then(val => {
-    if (val.id) {
-      document.getElementById('googleDriveMsg').innerHTML = '<span style="color:green">Veriler Google Drive\'a başarıyla kaydedildi ✔️</span>';
-    } else {
-      document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Drive\'a kaydetme hatası: ' + (val.error?.message || 'Bilinmeyen hata') + '</span>';
-    }
-  })
-  .catch(err => {
-    document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Drive\'a veri kaydedilirken bir hata oluştu ❌</span>';
-  });
-}
-
+/* -------------------------
+  Temalar, ses ve başlangıç
+   ------------------------- */
 function setTheme(t){
   const body = document.body;
   if(t==='colorful'){
@@ -214,38 +178,110 @@ function setTheme(t){
   }
   localStorage.setItem('theme',t);
 }
-
 (function(){const t=localStorage.getItem('theme'); if(t) setTheme(t);})();
+document.getElementById('autoImport').checked = localStorage.getItem(LS_AUTO_IMPORT) === 'true';
+document.getElementById('autoImport').addEventListener('change', function(){ localStorage.setItem(LS_AUTO_IMPORT, this.checked); });
+document.getElementById('keepBackup').checked = false;
 
-const LS_KEY='deneme_analiz_v3_students';
-
-function save(){localStorage.setItem(LS_KEY,JSON.stringify(students))}
-function uid(){return Date.now()+Math.floor(Math.random()*999)}
-
-const audio=document.getElementById('bgAudio'); const audioToggle=document.getElementById('audioToggle'); audio.volume=0.12; audio.muted=false; audioToggle.classList.remove('muted');
+/* Audio */
+const audio=document.getElementById('bgAudio'); const audioToggle=document.getElementById('audioToggle');
+audio.volume=0.12; audio.muted=false; audioToggle.classList.remove('muted');
 async function tryAutoPlay(){try{await audio.play(); audioToggle.textContent='🔊'; audioToggle.classList.remove('muted');}catch(e){audioToggle.textContent='🔈'; audioToggle.classList.add('muted');}}
 tryAutoPlay();
 function toggleAudio(){if(audio.paused){audio.play(); audioToggle.textContent='🔊'; audioToggle.classList.remove('muted');}else{audio.pause();audioToggle.textContent='🔈';audioToggle.classList.add('muted');}}
 
+/* -------------------------
+  Yardımcılar: toasts, busy, online status
+   ------------------------- */
+function setBusy(on) {
+  busyCount += on ? 1 : -1;
+  busyCount = Math.max(0, busyCount);
+  const disabled = busyCount > 0;
+  ['btnSaveDrive','btnImportDrive','btnListFiles','btnAddStudent'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.disabled = disabled;
+  });
+}
+function showToast(text, type='success', timeout=3500, actionText, actionCallback) {
+  const container = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.setAttribute('role','status');
+  el.innerHTML = `<div style="flex:1">${text}</div>`;
+  if (actionText && actionCallback) {
+    const btn = document.createElement('div');
+    btn.className = 'action';
+    btn.textContent = actionText;
+    btn.onclick = () => { actionCallback(); btn.remove(); el.remove(); };
+    el.appendChild(btn);
+  }
+  container.appendChild(el);
+  // animate in
+  requestAnimationFrame(()=> el.classList.add('visible'));
+  if (timeout > 0) setTimeout(()=> { el.classList.remove('visible'); setTimeout(()=>el.remove(),200); }, timeout);
+}
+function showMsg(msg, isError=false) {
+  const el = document.getElementById('googleDriveMsg');
+  el.innerHTML = `<span style="color:${isError?'red':'green'}">${msg}</span>`;
+  showToast(msg, isError?'error':'success', 4000);
+}
+
+/* Online indicator */
+function updateOnlineStatus(){ document.getElementById('offlineIndicator').textContent = navigator.onLine ? 'Çevrimiçi' : 'Çevrimdışı'; }
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+/* -------------------------
+  Local save + autosave debounce + undo
+   ------------------------- */
+function saveLocal(){ localStorage.setItem(LS_KEY, JSON.stringify(students)); localStorage.setItem(LS_FILE_MTIME, new Date().toISOString()); }
+function scheduleSaveLocal(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=> {
+    saveLocal();
+    showToast('Yerel olarak kaydedildi', 'success', 2000);
+  }, 800);
+}
+
+/* Undo delete support */
+function pushDeleted(item, idx) {
+  lastDeleted = { item, idx, time: Date.now() };
+  showToast('Öğe silindi', 'info', 6000, 'Geri al', undoDelete);
+}
+function undoDelete(){
+  if(!lastDeleted) { showToast('Geri alınacak öğe yok', 'error'); return; }
+  students.splice(lastDeleted.idx,0,lastDeleted.item);
+  saveLocal(); renderStudents();
+  lastDeleted = null;
+  showToast('Silme işlemi geri alındı', 'success');
+}
+
+/* -------------------------
+  Öğrenci CRUD ve UI
+   ------------------------- */
 function addStudent(){
   const name=document.getElementById('inpName').value.trim();
   const surname=document.getElementById('inpSurname').value.trim();
   const type=document.getElementById('inpType').value;
   const msgEl=document.getElementById('studentMsg');
   msgEl.innerHTML='';
-  if(!name||!surname){msgEl.innerHTML='<span style="color:red">Ad ve soyad gerekli</span>';return;}
+  if(!name||!surname){ msgEl.innerHTML='<span style="color:red">Ad ve soyad gerekli</span>'; showToast('Ad ve soyad gerekli', 'error'); return; }
   if(students.some(s=>s.name.toLowerCase()===name.toLowerCase()&&s.surname.toLowerCase()===surname.toLowerCase())){
-    msgEl.innerHTML='<span style="color:red">Bu isimde bir öğrenci zaten var.</span>'; return;
+    msgEl.innerHTML='<span style="color:red">Bu isimde bir öğrenci zaten var.</span>'; showToast('Bu isimde öğrenci zaten var', 'error'); return;
   }
-  students.push({id:uid(),name,surname,type,exams:[]});
-  save(); renderStudents();
+  const newStudent = {id:uid(),name,surname,type,exams:[]};
+  students.push(newStudent);
+  scheduleSaveLocal(); renderStudents();
   document.getElementById('inpName').value=''; document.getElementById('inpSurname').value='';
   msgEl.innerHTML='<span class="successMsg">Öğrenci eklendi ✔️</span>';
+  showToast('Öğrenci eklendi', 'success');
 }
 
 function clearAll(){
   if(confirm('Tüm verileri silmek istediğine emin misin?')){
-    students=[];save();renderStudents(); closeModal();
+    students=[]; saveLocal(); renderStudents(); closeModal();
+    showToast('Tüm veriler silindi', 'info');
   }
 }
 
@@ -260,28 +296,34 @@ function renderStudents(){
     <div style="font-size:13px;color:#444">${s.exams?.length||0} deneme</div>`;
     const right=document.createElement('div'); right.className='controls';
     const btnDetail=document.createElement('button'); btnDetail.textContent='Detay Gör'; btnDetail.onclick=function(){showExams(idx);};
-    const btnDelete=document.createElement('button'); btnDelete.textContent='Sil'; btnDelete.className='danger'; btnDelete.onclick=function(){students.splice(idx,1); save(); renderStudents();};
+    const btnDelete=document.createElement('button'); btnDelete.textContent='Sil'; btnDelete.className='danger'; btnDelete.onclick=function(){
+      if(confirm('Öğrenciyi sil?')){ pushDeleted(s, idx); students.splice(idx,1); saveLocal(); renderStudents(); }
+    };
     right.appendChild(btnDetail); right.appendChild(btnDelete); div.appendChild(left); div.appendChild(right); container.appendChild(div);
   });
 }
 
-// Modal helpers (Escape ile kapatma)
+/* -------------------------
+  Modal helpers
+   ------------------------- */
 function showModal(title,bodyHtml,footerHtml){
   document.getElementById('modalTitle').innerHTML=title;
   document.getElementById('modalBody').innerHTML=bodyHtml;
   document.getElementById('modalFooter').innerHTML=footerHtml;
   const modal=document.getElementById('modal');
   modal.style.display='flex'; modal.focus();
+  setTimeout(()=> {
+    const firstInput = modal.querySelector('input, button, select, textarea');
+    if(firstInput) firstInput.focus();
+  },50);
 }
-function closeModal(){
-  document.getElementById('modal').style.display='none';
-  modalStudentIdx = null; modalExamIdx = null;
-}
-document.getElementById('modal').addEventListener('keydown',function(e){
-  if(e.key==='Escape') closeModal();
-});
+function closeModal(){ document.getElementById('modal').style.display='none'; modalStudentIdx = null; modalExamIdx = null; }
+document.getElementById('modal').addEventListener('keydown',function(e){ if(e.key==='Escape') closeModal(); });
 
-// Grafik aç/kapat fonksiyonu
+/* -------------------------
+  Grafik ve Deneme form fonksiyonları
+   (aynı mantık, ancak scheduleSaveLocal çağrılıyor)
+   ------------------------- */
 function toggleChart(chartId, btnId) {
   const chartDiv = document.getElementById(chartId).parentNode;
   const btn = document.getElementById(btnId);
@@ -294,7 +336,6 @@ function toggleChart(chartId, btnId) {
   }
 }
 
-// Öğrenci detay ve deneme ekleme arayüzü
 function showExams(idx){
   modalStudentIdx = idx;
   const student = students[idx];
@@ -386,7 +427,7 @@ function drawChart(canvasId, denemeler){
   });
 }
 
-// Deneme ekleme/düzenleme formu
+/* Deneme ekleme/düzenleme formu */
 function addExamForm(idx){
   modalStudentIdx = idx;
   modalExamIdx = null;
@@ -428,7 +469,7 @@ function editExam(idx,exIdx){
   renderNetFields(exIdx);
 }
 
-// Formda her ders için doğru, yanlış ve otomatik net hesaplama
+/* Form fields, validation and automatic net calc */
 function renderNetFields(examIndex){
   const idx = modalStudentIdx;
   const exIdx = typeof examIndex==='number'?examIndex:null;
@@ -444,8 +485,8 @@ function renderNetFields(examIndex){
     let lim = getLimitForField(session,student.type,ders);
     html += `<label>${ders}
       <div style="display:flex;gap:4px;">
-        <input type="number" id="dogru_${ders}" min="0" max="${lim}" value="${dogru}" placeholder="Doğru" oninput="inputLimitCheck('${ders}',${lim});calcNet('${ders}')">
-        <input type="number" id="yanlis_${ders}" min="0" max="${lim}" value="${yanlis}" placeholder="Yanlış" oninput="inputLimitCheck('${ders}',${lim});calcNet('${ders}')">
+        <input type="number" id="dogru_${ders}" min="0" max="${lim}" value="${dogru}" placeholder="Doğru" oninput="inputLimitCheck('${ders}',${lim});calcNet('${ders');scheduleSaveLocal();}">
+        <input type="number" id="yanlis_${ders}" min="0" max="${lim}" value="${yanlis}" placeholder="Yanlış" oninput="inputLimitCheck('${ders}',${lim});calcNet('${ders}');scheduleSaveLocal();">
         <input type="number" id="net_${ders}" value="${net}" readonly style="width:60px;">
       </div>
       <div class="limitWarn" id="limitWarn_${ders}"></div>
@@ -455,8 +496,10 @@ function renderNetFields(examIndex){
 }
 
 function inputLimitCheck(ders, lim){
-  let dogru = Number(document.getElementById('dogru_' + ders).value) || 0;
-  let yanlis = Number(document.getElementById('yanlis_' + ders).value) || 0;
+  const dogruEl = document.getElementById('dogru_' + ders);
+  const yanlisEl = document.getElementById('yanlis_' + ders);
+  let dogru = Number(dogruEl?.value) || 0;
+  let yanlis = Number(yanlisEl?.value) || 0;
   let warn = document.getElementById('limitWarn_' + ders);
   if(dogru + yanlis > lim){
     warn.textContent = `Doğru+Yanlış toplamı en fazla ${lim} olabilir!`;
@@ -493,47 +536,446 @@ function saveExam(){
     nets[ders] = {dogru, yanlis, net};
     toplamNet += Number(net);
   });
-  if(hasError) return;
+  if(hasError) { showToast('Deneme kaydedilemedi: hatalar var', 'error'); return; }
   if(modalExamIdx!==null){
     student.exams[modalExamIdx] = {session,date,nets,toplamNet:toplamNet.toFixed(2)};
     msgEl.innerHTML='<span class="successMsg">Deneme güncellendi ✔️</span>';
+    showToast('Deneme güncellendi', 'success');
   }else{
     student.exams.push({session,date,nets,toplamNet:toplamNet.toFixed(2)});
     msgEl.innerHTML='<span class="successMsg">Deneme eklendi ✔️</span>';
+    showToast('Deneme eklendi', 'success');
   }
-  save(); setTimeout(function(){showExams(idx);},600);
+  scheduleSaveLocal(); setTimeout(function(){showExams(idx);},600);
 }
 
 function deleteExam(idx,exIdx){
   if(confirm('Bu denemeyi silmek istiyor musun?')){
-    students[idx].exams.splice(exIdx,1);
-    save(); showExams(idx);
+    const removed = students[idx].exams.splice(exIdx,1)[0];
+    pushDeleted(removed, exIdx);
+    saveLocal(); showExams(idx);
   }
 }
 
-function getDerslerFor(studentType,oturum){
-  if(oturum==='TYT') return ['Mat','Turkce','Sosyal','Fen'];
-  else if(studentType==='Sayisal') return ['Matematik','Fizik','Kimya','Biyoloji'];
-  else if(studentType==='Sozel') return ['Turkce','Tarih1','Cografya1','Tarih2','Cografya2','Felsefe','Din'];
-  else if(studentType==='EsitAgirlik') return ['Matematik','Turkce','Tarih1','Cografya1'];
-  return [];
-}
+/* -------------------------
+  Drive işlemleri (korunan önceki mantık)
+   - upload (PATCH/POST), download (fileId/isim), listeleme, backup
+   - ek olarak: setBusy kullanımı, toasts, çakışma modalı
+   ------------------------- */
 
-function getLimitForField(oturum,studentType,field){
-  const limits={
-    TYT:{Mat:40,Turkce:40,Sosyal:20,Fen:20},
-    AYT:{
-      Sayisal:{Matematik:40,Fizik:14,Kimya:13,Biyoloji:13},
-      Sozel:{Turkce:24,Tarih1:10,Cografya1:6,Tarih2:11,Cografya2:11,Felsefe:12,Din:6},
-      EsitAgirlik:{Matematik:40,Turkce:24,Tarih1:10,Cografya1:6}
+function startAuthFor(action) {
+  // action: 'upload' | 'import' | 'list'
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) {
+        showMsg('Google giriş hatası: ' + resp.error, true);
+        return;
+      }
+      // get userinfo for display
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': 'Bearer ' + resp.access_token } })
+      .then(r=>r.json())
+      .then(user=>{
+        localStorage.setItem(LS_ACCOUNT, JSON.stringify(user));
+        document.getElementById('accountInfo').innerText = `Drive hesabı: ${user.email}`;
+      }).catch(()=>{});
+      if (action === 'upload') uploadStudentsToDrive(resp.access_token);
+      else if (action === 'import') downloadStudentsFromDrive(resp.access_token);
+      else if (action === 'list') listDriveFilesAndShow(resp.access_token);
     }
-  };
-  if(oturum==='TYT') return limits.TYT[field]??null;
-  const map=limits.AYT[studentType]||{};
-  return map[field]??(map[field.replace(/ı/g,'i')]??null);
+  });
+  tokenClient.requestAccessToken();
 }
 
+function getFileMetadataById(accessToken, fileId) {
+  return fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,modifiedTime`, {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  }).then(r=>r.json());
+}
+
+function uploadStudentsToDrive(accessToken) {
+  setBusy(true);
+  showMsg('Drive\'a kaydediliyor... Lütfen bekleyin');
+  const content = JSON.stringify(students, null, 2);
+  const metadata = { name: 'deneme_analiz_verileri.json', mimeType: 'application/json' };
+  const form = (fileContent) => {
+    const f = new FormData();
+    f.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    f.append('file', new Blob([fileContent], { type: 'application/json' }));
+    return f;
+  };
+
+  const storedId = localStorage.getItem(LS_FILE_ID);
+
+  if (storedId) {
+    fetch(`https://www.googleapis.com/upload/drive/v3/files/${storedId}?uploadType=multipart`, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + accessToken },
+      body: form(content)
+    })
+    .then(r=>r.json())
+    .then(res => {
+      if (res.id) {
+        localStorage.setItem(LS_FILE_ID, res.id);
+        if (res.modifiedTime) localStorage.setItem(LS_FILE_MTIME, res.modifiedTime);
+        showMsg('Drive dosyası güncellendi ✔️');
+        if (document.getElementById('keepBackup').checked) createTimestampBackup(accessToken, content);
+      } else {
+        searchByNameAndUpload(accessToken, content, form);
+      }
+    })
+    .catch(err=>{
+      searchByNameAndUpload(accessToken, content, form);
+    })
+    .finally(()=> setBusy(false));
+    return;
+  }
+
+  searchByNameAndUpload(accessToken, content, form).finally(()=> setBusy(false));
+}
+
+function searchByNameAndUpload(accessToken, content, formFactory) {
+  setBusy(true);
+  return fetch('https://www.googleapis.com/drive/v3/files?q=name="deneme_analiz_verileri.json"&fields=files(id,name,modifiedTime)', {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  })
+  .then(r=>r.json())
+  .then(list=>{
+    if (list.files && list.files.length > 0) {
+      const fileId = list.files[0].id;
+      return fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + accessToken },
+        body: formFactory(content)
+      })
+      .then(r=>r.json())
+      .then(res=>{
+        if (res.id) {
+          localStorage.setItem(LS_FILE_ID, res.id);
+          if (res.modifiedTime) localStorage.setItem(LS_FILE_MTIME, res.modifiedTime);
+          showMsg('Drive dosyası güncellendi ✔️');
+          if (document.getElementById('keepBackup').checked) createTimestampBackup(accessToken, content);
+        } else {
+          showMsg('Drive güncelleme hatası', true);
+        }
+      });
+    } else {
+      return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + accessToken },
+        body: formFactory(content)
+      })
+      .then(r=>r.json())
+      .then(res=>{
+        if (res.id) {
+          localStorage.setItem(LS_FILE_ID, res.id);
+          if (res.modifiedTime) localStorage.setItem(LS_FILE_MTIME, res.modifiedTime);
+          showMsg('Veriler Drive\'a kaydedildi ✔️');
+          if (document.getElementById('keepBackup').checked) createTimestampBackup(accessToken, content);
+        } else {
+          showMsg('Drive kaydetme hatası', true);
+        }
+      }).catch(()=>showMsg('Drive kaydetme hatası', true));
+    }
+  }).catch(()=>showMsg('Drive dosya arama hatası', true)).finally(()=> setBusy(false));
+}
+
+function createTimestampBackup(accessToken, content) {
+  const ts = new Date().toISOString().replace(/[:.]/g,'-');
+  const metadata = { name: `deneme_analiz_backup_${ts}.json`, mimeType:'application/json' };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', new Blob([content], { type: 'application/json' }));
+  fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method:'POST',
+    headers: { 'Authorization': 'Bearer ' + accessToken },
+    body: form
+  }).then(()=>{}).catch(()=>{});
+}
+
+/* Download and conflict management */
+function downloadStudentsFromDrive(accessToken) {
+  setBusy(true);
+  showMsg('Drive\'dan kontrol ediliyor...');
+  const storedId = localStorage.getItem(LS_FILE_ID);
+
+  const downloadById = (fileId, remoteMtime=null) => {
+    return fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { 'Authorization': 'Bearer ' + accessToken }
+    })
+    .then(res=>{
+      if (!res.ok) throw new Error('İndirme başarısız');
+      return res.json().then(data => ({data, remoteMtime}));
+    })
+    .then(({data, remoteMtime})=>{
+      if (!remoteMtime) {
+        return getFileMetadataById(accessToken, fileId).then(meta => {
+          remoteMtime = meta.modifiedTime || new Date().toISOString();
+          return {data, remoteMtime};
+        }).catch(()=> ({data, remoteMtime: new Date().toISOString()}));
+      }
+      return {data, remoteMtime};
+    })
+    .then(({data, remoteMtime}) => {
+      const localMtime = localStorage.getItem(LS_FILE_MTIME);
+      if (localMtime && new Date(localMtime) > new Date(remoteMtime)) {
+        window._conflict_remote = {remoteData: data, remoteFileId: fileId, remoteMtime};
+        showConflictModal(data, fileId, remoteMtime);
+      } else {
+        students = data;
+        saveLocal();
+        localStorage.setItem(LS_FILE_ID, fileId);
+        localStorage.setItem(LS_FILE_MTIME, remoteMtime);
+        renderStudents();
+        showMsg('Veriler Drive\'dan başarıyla yüklendi ✔️');
+        closeModal();
+      }
+    })
+    .catch(err=>{
+      showMsg('Drive\'dan veri alınırken hata oluştu!', true);
+    })
+    .finally(()=> setBusy(false));
+  };
+
+  if (storedId) {
+    getFileMetadataById(accessToken, storedId)
+    .then(meta=> {
+      if (meta && meta.id) {
+        return downloadById(storedId, meta.modifiedTime);
+      } else {
+        return fetchByNameAndPrompt(accessToken);
+      }
+    }).catch(()=> fetchByNameAndPrompt(accessToken));
+    return;
+  }
+
+  fetchByNameAndPrompt(accessToken);
+}
+
+function fetchByNameAndPrompt(accessToken){
+  setBusy(true);
+  return fetch('https://www.googleapis.com/drive/v3/files?q=name contains "deneme_analiz"&fields=files(id,name,modifiedTime)', {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  })
+  .then(r=>r.json())
+  .then(list=>{
+    if (list.files && list.files.length>0) {
+      showFileSelectionModal(list.files, accessToken);
+      showMsg('Dosyalar bulundu: seçim yapabilirsiniz', false);
+    } else {
+      showMsg('Drive\'da uygun dosya bulunamadı', true);
+    }
+  }).catch(()=>showMsg('Drive dosya listesi alınamadı', true)).finally(()=> setBusy(false));
+}
+
+/* Conflict modal and merge */
+function showConflictModal(remoteData, remoteFileId, remoteMtime) {
+  const body = `<div>
+    <p>Yereldeki veriler Drive'dakinden daha yeni görünüyor.</p>
+    <p class="metaSmall">Yerel zaman: ${localStorage.getItem(LS_FILE_MTIME) || '—'}</p>
+    <p class="metaSmall">Drive zamanı: ${remoteMtime}</p>
+    <p>Ne yapmak istersiniz?</p>
+  </div>`;
+  const footer = `
+    <button onclick="conflictAction('keepLocal')">Yereldekini Koru</button>
+    <button onclick="conflictAction('keepRemote')">Drive'ı Kullan</button>
+    <button onclick="conflictAction('merge')">Birleştir (tarihe göre)</button>
+    <button onclick="closeModal()" class="secondary">İptal</button>
+  `;
+  showModal('Çakışma tespit edildi', body, footer);
+  window._conflict_remote = {remoteData, remoteFileId, remoteMtime};
+}
+
+function conflictAction(action) {
+  const obj = window._conflict_remote || {};
+  const remoteData = obj.remoteData;
+  const fileId = obj.remoteFileId;
+  const remoteMtime = obj.remoteMtime;
+  if (action === 'keepLocal') {
+    closeModal();
+    startAuthFor('upload');
+    showToast('Yereldekiler korunacak ve Drive güncellenecek...');
+  } else if (action === 'keepRemote') {
+    students = remoteData;
+    saveLocal();
+    localStorage.setItem(LS_FILE_ID, fileId);
+    localStorage.setItem(LS_FILE_MTIME, remoteMtime);
+    renderStudents();
+    showMsg('Drive verisi kullanıldı ✔️');
+    closeModal();
+  } else if (action === 'merge') {
+    const merged = mergeStudents(students, remoteData);
+    students = merged;
+    saveLocal();
+    localStorage.setItem(LS_FILE_ID, fileId);
+    localStorage.setItem(LS_FILE_MTIME, new Date().toISOString());
+    renderStudents();
+    showMsg('Veriler birleştirildi ve yerelde kaydedildi ✔️');
+    closeModal();
+  }
+  window._conflict_remote = null;
+}
+
+function mergeStudents(localArr, remoteArr) {
+  const map = new Map();
+  localArr.forEach(s => map.set(s.id, JSON.parse(JSON.stringify(s))));
+  remoteArr.forEach(r => {
+    if (map.has(r.id)) {
+      const base = map.get(r.id);
+      base.exams = mergeExamsArray(base.exams, r.exams);
+      map.set(r.id, base);
+    } else {
+      const found = Array.from(map.values()).find(x => x.name===r.name && x.surname===r.surname);
+      if (found) {
+        found.exams = mergeExamsArray(found.exams, r.exams);
+      } else {
+        const newId = r.id || uid();
+        const copy = JSON.parse(JSON.stringify(r));
+        copy.id = newId;
+        map.set(copy.id, copy);
+      }
+    }
+  });
+  return Array.from(map.values());
+}
+function mergeExamsArray(a, b) {
+  const combined = [...(a||[])];
+  b = b || [];
+  b.forEach(ex => {
+    const exists = combined.some(e => e.session===ex.session && e.date===ex.date && e.toplamNet===ex.toplamNet);
+    if (!exists) combined.push(JSON.parse(JSON.stringify(ex)));
+  });
+  combined.sort((x,y)=> (x.date||'').localeCompare(y.date||''));
+  return combined;
+}
+
+/* File selection modal */
+function showFileSelectionModal(files, accessToken) {
+  const body = document.createElement('div');
+  files.forEach(f=>{
+    const div = document.createElement('div');
+    div.className='fileListItem';
+    div.innerHTML = `<div>
+      <div><strong>${f.name}</strong></div>
+      <div class="metaSmall">modified: ${f.modifiedTime || '—'}</div>
+    </div>
+    <div>
+      <button onclick="chooseFileAndDownload('${f.id}')">İndir</button>
+    </div>`;
+    body.appendChild(div);
+  });
+  showModal('Drive dosyaları', '', '<button onclick="closeModal()" class="secondary">Kapat</button>');
+  document.getElementById('modalBody').innerHTML = '';
+  document.getElementById('modalBody').appendChild(body);
+  window._last_access_token = accessToken;
+}
+
+function chooseFileAndDownload(fileId) {
+  const accessToken = window._last_access_token;
+  if (!accessToken) { showMsg('Access token yok - tekrar deneyin', true); closeModal(); return; }
+  getFileMetadataById(accessToken, fileId).then(meta=>{
+    fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { 'Authorization': 'Bearer ' + accessToken }
+    })
+    .then(r=>r.json())
+    .then(data=>{
+      const remoteMtime = meta.modifiedTime || new Date().toISOString();
+      const localMtime = localStorage.getItem(LS_FILE_MTIME);
+      if (localMtime && new Date(localMtime) > new Date(remoteMtime)) {
+        window._conflict_remote = { remoteData: data, remoteFileId: fileId, remoteMtime };
+        showConflictModal(data, fileId, remoteMtime);
+      } else {
+        students = data;
+        saveLocal();
+        localStorage.setItem(LS_FILE_ID, fileId);
+        localStorage.setItem(LS_FILE_MTIME, remoteMtime);
+        renderStudents();
+        showMsg('Seçilen dosya yüklendi ✔️');
+        closeModal();
+      }
+    })
+    .catch(()=> showMsg('Dosya indirilemedi', true));
+  }).catch(()=> showMsg('Metadata alınamadı', true));
+}
+
+function listDriveFilesAndShow(accessToken) {
+  showMsg('Drive dosyaları listeleniyor...');
+  fetch('https://www.googleapis.com/drive/v3/files?q=name contains "deneme_analiz"&fields=files(id,name,modifiedTime)', {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  })
+  .then(r=>r.json())
+  .then(list=>{
+    if (list.files && list.files.length>0) {
+      showFileSelectionModal(list.files, accessToken);
+      showMsg('Dosyalar listelendi ✔️');
+    } else {
+      showMsg('Uygun dosya bulunamadı', true);
+    }
+  }).catch(()=>showMsg('Listelenirken hata oluştu', true));
+}
+
+/* -------------------------
+  CSV export helper
+   ------------------------- */
+function exportCSV() {
+  let rows = [['ad','soyad','bolum','oturum','tarih','ders','dogru','yanlis','net','toplamNet']];
+  students.forEach(s=>{
+    s.exams.forEach(ex=>{
+      for (const ders in ex.nets) {
+        const d = ex.nets[ders];
+        rows.push([s.name, s.surname, s.type, ex.session, ex.date, ders, d.dogru, d.yanlis, d.net, ex.toplamNet]);
+      }
+    });
+  });
+  const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  const a = document.createElement('a'); a.href=url; a.download='deneme_analiz_export.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV indirildi', 'success');
+}
+
+/* -------------------------
+  Onboarding (ilk kullanım)
+   ------------------------- */
+function tryShowOnboarding() {
+  if (localStorage.getItem(LS_ONBOARD)) return;
+  const body = `<div>
+    <p>Hoş geldiniz! Kısa bir tur:</p>
+    <ol>
+      <li>Öğrenci ekleyin.</li>
+      <li>Verilerinizi Drive'a kaydetmek için "Google ile Giriş & Kaydet" butonunu kullanın.</li>
+      <li>Başka cihazda "Drive’dan Yükle" ile verilerinizi geri getirin.</li>
+    </ol>
+    <label><input id="dontShowOnboard" type="checkbox"> Tekrar gösterme</label>
+  </div>`;
+  const footer = `<button onclick="finishOnboard()">Tamam</button>`;
+  showModal('Hızlı Başlangıç', body, footer);
+}
+function finishOnboard(){
+  if (document.getElementById('dontShowOnboard')?.checked) localStorage.setItem(LS_ONBOARD, 'true');
+  closeModal();
+}
+
+/* -------------------------
+  Başlangıç işlemleri
+   ------------------------- */
 renderStudents();
+tryShowOnboarding();
+(function showStoredAccount(){
+  const acc = localStorage.getItem(LS_ACCOUNT);
+  if (acc) {
+    try{
+      const u = JSON.parse(acc);
+      document.getElementById('accountInfo').innerText = `Drive hesabı: ${u.email}`;
+    }catch(e){}
+  }
+})();
+
+/* -------------------------
+  Yardımcı fonksiyonlar
+   ------------------------- */
+function uid(){ return Date.now()+Math.floor(Math.random()*999); }
 </script>
 </body>
 </html>

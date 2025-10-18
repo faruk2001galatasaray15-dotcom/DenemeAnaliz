@@ -86,6 +86,7 @@
 <div class="card">
   <h3>Google Drive Entegrasyonu</h3>
   <button onclick="handleAuthClick()">Google ile Giriş Yap ve Verileri Drive'a Kaydet</button>
+  <button onclick="handleDriveImport()" style="margin-left:8px;">Google Drive’dan Verileri Yükle</button>
   <div id="googleDriveMsg"></div>
 </div>
 <div id="modal" class="modal" style="display:none" tabindex="-1">
@@ -118,6 +119,52 @@ function handleAuthClick() {
     }
   });
   tokenClient.requestAccessToken();
+}
+
+// **EKLENDİ**: Drive’dan dosya bulma ve indirme fonksiyonları
+function handleDriveImport() {
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (response) => {
+      if (response.error) {
+        document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Google giriş hatası: ' + response.error + '</span>';
+        return;
+      }
+      downloadStudentsFromDrive(response.access_token);
+    }
+  });
+  tokenClient.requestAccessToken();
+}
+function listDriveFiles(accessToken, callback) {
+  fetch('https://www.googleapis.com/drive/v3/files?q=name="deneme_analiz_verileri.json"&fields=files(id,name)', {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.files && data.files.length > 0) {
+      callback(data.files[0].id);
+    } else {
+      document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Drive\'da veri dosyası bulunamadı!</span>';
+    }
+  });
+}
+function downloadStudentsFromDrive(accessToken) {
+  listDriveFiles(accessToken, function(fileId) {
+    fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+      headers: { 'Authorization': 'Bearer ' + accessToken }
+    })
+    .then(res => res.json())
+    .then(data => {
+      localStorage.setItem('deneme_analiz_v3_students', JSON.stringify(data));
+      students = data;
+      renderStudents();
+      document.getElementById('googleDriveMsg').innerHTML = '<span style="color:green">Veriler Google Drive\'dan başarıyla yüklendi ✔️</span>';
+    })
+    .catch(err => {
+      document.getElementById('googleDriveMsg').innerHTML = '<span style="color:red">Drive\'dan veri alınırken hata oluştu!</span>';
+    });
+  });
 }
 
 function uploadStudentsToDrive(accessToken) {

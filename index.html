@@ -1,11 +1,14 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Deneme Analiz V3 - Gelişmiş UX (Düzeltilmiş)</title>
+  <title>Deneme Analiz V3 - Drive Entegrasyonlu</title>
+
+  <!-- Google Identity Services (token client) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     :root{font-family:Inter,Arial,Helvetica,sans-serif}
     body{margin:16px;background:#fff;color:#111;transition:background 0.4s;}
@@ -15,7 +18,6 @@
     .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     input[type="text"], select, input[type="date"], input[type="number"]{padding:6px;border:1px solid #ccc;border-radius:4px}
     button{padding:6px 8px;border-radius:6px;border:1px solid #888;background:#f0f0f0;cursor:pointer}
-    button.primary{background:#007bff;color:#fff;border-color:#0062d6}
     button.secondary{background:#fff;border:1px solid #bbb}
     #studentList {margin-top:12px}
     .studentItem{padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
@@ -27,7 +29,7 @@
     #audioToggle{position:fixed;right:12px;bottom:12px;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:#222;color:#fff;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.2)}
     #audioToggle.muted{background:#aaa;color:#222}
     .modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);overflow:auto;z-index:999}
-    .card{background:#fff;padding:16px;border-radius:8px;max-width:920px;width:96%;box-shadow:0 8px 30px rgba(0,0,0,0.15)}
+    .card{background:#fff;padding:16px;border-radius:8px;max-width:820px;width:96%;box-shadow:0 8px 30px rgba(0,0,0,0.15)}
     .card h3{margin-top:0}
     .fieldRow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
     label{display:flex;flex-direction:column;font-size:13px}
@@ -38,59 +40,47 @@
     .successMsg {color:green; font-size:13px; margin-top:5px;}
     .toggleChartBtn {margin-bottom:4px;}
     .limitWarn {font-size:12px;color:red;}
+    #driveList {margin-top:8px}
+    .driveFile {padding:8px;border:1px solid #eee;border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
     .muted {opacity:0.6}
-    .spinner {display:inline-block;padding:4px 8px;border-radius:6px;background:#f3f3f3;margin-left:8px}
-    .fileListItem{padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
-    .metaSmall{font-size:12px;color:#666}
-    /* Toasts */
-    #toasts { position: fixed; top: 16px; right: 16px; z-index: 2000; display:flex; flex-direction:column; gap:8px; }
-    .toast { background:#222;color:#fff;padding:10px 12px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.18);opacity:0;transform:translateY(-8px);transition:all .18s ease; display:flex; gap:8px; align-items:center; }
-    .toast.visible { opacity:1; transform:translateY(0); }
-    .toast.success{ background: #198754; }
-    .toast.error{ background: #dc3545; }
-    .toast.info{ background: #0d6efd; }
-    .toast .action { margin-left:8px; background: rgba(255,255,255,0.15); border-radius:6px; padding:4px 6px; cursor:pointer; font-weight:600; }
-    /* Offline indicator */
-    #offlineIndicator { position:fixed; left:12px; bottom:12px; padding:6px 10px; border-radius:8px; background:#e9ecef; color:#333; font-size:13px; box-shadow:0 6px 18px rgba(0,0,0,0.08); z-index:999; }
     @media (max-width:600px){
       .card{max-width:99vw;}
       canvas{min-width:200px;}
-      #toasts { left: 12px; right: auto; top: 12px; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<h1>Deneme Analiz V3 - Gelişmiş UX (Düzeltilmiş)</h1>
+<h1>Deneme Analiz V3 (Drive Entegrasyonlu)</h1>
+
 <div class="row">
   <div>
     Tema:
-    <button onclick="setTheme('light')">Beyaz</button>
-    <button onclick="setTheme('dark')">Siyah</button>
-    <button onclick="setTheme('colorful')">Renkli</button>
+    <button onclick="app.setTheme('light')">Beyaz</button>
+    <button onclick="app.setTheme('dark')">Siyah</button>
+    <button onclick="app.setTheme('colorful')">Renkli</button>
   </div>
   <div style="margin-left:auto">
-    <!-- background.mp3 bulunamazsa konsolda uyarı verir ve element gizlenir -->
-    <audio id="bgAudio" src="background.mp3" loop onerror="this.style.display='none';console.warn('background.mp3 yüklenemedi')"></audio>
+    <audio id="bgAudio" src="background.mp3" loop></audio>
     <small style="opacity:0.8">Soundtrack</small>
   </div>
 </div>
 <hr/>
+
 <div class="card" style="margin-bottom:12px">
   <h3>Öğrenci Ekle</h3>
   <div class="fieldRow">
-    <label>Adı <input id="inpName" type="text" oninput="scheduleSaveLocal()"></label>
-    <label>Soyadı <input id="inpSurname" type="text" oninput="scheduleSaveLocal()"></label>
+    <label>Adı <input id="inpName" type="text"></label>
+    <label>Soyadı <input id="inpSurname" type="text"></label>
     <label>Bölümü
-      <select id="inpType" onchange="scheduleSaveLocal()">
+      <select id="inpType">
         <option value="Sayisal">Sayısal</option>
         <option value="Sozel">Sözel</option>
         <option value="EsitAgirlik">Eşit Ağırlık</option>
       </select>
     </label>
     <div class="right">
-      <button onclick="addStudent()" class="small primary" id="btnAddStudent">Kaydet</button>
-      <button onclick="clearAll()" class="small secondary">Tüm Verileri Sil</button>
+      <button onclick="app.addStudent()" class="small">Kaydet</button>
+      <button onclick="app.clearAll()" class="small secondary">Tüm Verileri Sil</button>
     </div>
   </div>
   <div id="studentMsg" aria-live="polite"></div>
@@ -102,26 +92,18 @@
   <div id="studentList"></div>
 </div>
 
-<!-- Google Drive Entegrasyonu -->
-<div class="card">
+<div class="card" style="margin-top:12px">
   <h3>Google Drive Entegrasyonu</h3>
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <button id="btnSaveDrive" onclick="startAuthFor('upload')" class="primary">Google ile Giriş & Kaydet</button>
-    <button id="btnImportDrive" onclick="startAuthFor('import')">Google Drive’dan Yükle</button>
-    <button id="btnListFiles" onclick="startAuthFor('list')">Drive Dosyalarını Listele</button>
-    <label style="margin-left:12px;">
-      <input id="autoImport" type="checkbox"> Açılışta otomatik Drive kontrolü
-    </label>
-    <label style="margin-left:auto;">
-      <input id="keepBackup" type="checkbox"> Her yüklemede timestamp'li yedek bırak
-    </label>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <button id="btnAuthUpload" onclick="app.handleAuthAndUpload()" class="small">Google ile Giriş &amp; Drive'a Kaydet</button>
+    <button id="btnAuthList" onclick="app.handleAuthAndList()" class="small secondary">Drive'den Yükle (Dosya Seç)</button>
+    <button id="btnSignOut" onclick="app.signOut()" class="small" style="display:none">Oturumu Kapat</button>
   </div>
   <div id="googleDriveMsg" style="margin-top:8px" aria-live="polite"></div>
-  <div id="accountInfo" style="margin-top:6px;font-size:13px;color:#333"></div>
+  <div id="driveList"></div>
 </div>
 
-<!-- Modal -->
-<div id="modal" class="modal" style="display:none" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+<div id="modal" class="modal" style="display:none" tabindex="-1">
   <div class="card" id="modalCard">
     <h3 id="modalTitle"></h3>
     <div id="modalBody"></div>
@@ -129,496 +111,510 @@
   </div>
 </div>
 
-<!-- Toasts -->
-<div id="toasts" aria-live="polite" aria-atomic="true"></div>
-
-<!-- Offline indicator -->
-<div id="offlineIndicator">Çevrimiçi</div>
-
-<!-- Audio toggle -->
-<div id="audioToggle" title="Müziği Aç/Kapa" onclick="toggleAudio()">🔈</div>
+<div id="audioToggle" title="Müziği Aç/Kapa" onclick="app.toggleAudio()">🔈</div>
 
 <script>
-/* -------------------------
-  Konfigürasyon ve durum
-   ------------------------- */
+/*
+  Deneme Analiz V3 - Drive entegrasyonlu tek dosya.
+  Sağ üstte "Google ile Giriş & Drive'a Kaydet" dosyayı upload eder.
+  "Drive'den Yükle (Dosya Seç)" kullanıcıya JSON dosyalarını listeler; seçim yapılırsa veriler indirilir ve uygulamaya yüklenir.
+  Başarılı işlemler için görsel geri bildirimler eklenmiştir.
+*/
+
 const CLIENT_ID = '573578857813-ufs2jvgf44h2dro87u6tqa6d8h4gg965.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
+// Kullanılacak scope'lar: yükleme (dosya oluşturma) ve okunabilirlik (listeleme / indirme)
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly';
+
 const LS_KEY = 'deneme_analiz_v3_students';
-const LS_FILE_ID = 'deneme_analiz_drive_file_id';
-const LS_FILE_MTIME = 'deneme_analiz_drive_file_mtime';
-const LS_AUTO_IMPORT = 'deneme_analiz_auto_import';
-const LS_ACCOUNT = 'deneme_analiz_drive_account';
-const LS_ONBOARD = 'deneme_analiz_onboard_shown';
 
-let students = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
-let modalStudentIdx = null, modalExamIdx = null;
-let lastDeleted = null;
-let saveTimer = null;
-let busyCount = 0; // for disabling buttons during network ops
+const app = (function(){
+  // State
+  let students = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+  let modalStudentIdx = null, modalExamIdx = null;
+  let tokenClient = null;
+  let currentAccessToken = null;
+  const pastelColors = ["#FFD1DC", "#B5FFFC", "#FDFD96", "#C1FFD7", "#E2C2FF", "#FFFACD", "#B7EDFA", "#E3F9DA", "#FFD6C6"];
+  const charts = {};
 
-const pastelColors = ["#FFD1DC", "#B5FFFC", "#FDFD96", "#C1FFD7", "#E2C2FF", "#FFFACD", "#B7EDFA", "#E3F9DA", "#FFD6C6"];
+  // elements
+  const googleDriveMsgEl = () => document.getElementById('googleDriveMsg');
+  const driveListEl = () => document.getElementById('driveList');
 
-/* -------------------------
-  Temalar, ses ve başlangıç
-   ------------------------- */
-function setTheme(t){
-  const body = document.body;
-  if(t==='colorful'){
-    let pastel = pastelColors[Math.floor(Math.random() * pastelColors.length)];
-    body.className='colorful';
-    body.style.background = pastel;
-    body.style.color = '#222';
-  }else if(t==='dark'){
-    body.className='dark';
-    body.style.background = '';
-    body.style.color = '';
-  }else{
-    body.className='';
-    body.style.background = '#fff';
-    body.style.color = '#111';
+  // helpers
+  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(students)); }
+  function uid(){ return Date.now() + Math.floor(Math.random()*999); }
+  function idify(text){ if(!text) return ''; return text.toString().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9_]/g,'_'); }
+  function norm(text){ return String(text || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g,'i'); }
+
+  // Theme
+  function setTheme(t){
+    const body = document.body;
+    if(t==='colorful'){
+      let pastel = pastelColors[Math.floor(Math.random() * pastelColors.length)];
+      body.className='colorful';
+      body.style.background = pastel;
+      body.style.color = '#222';
+    }else if(t==='dark'){
+      body.className='dark';
+      body.style.background = '';
+      body.style.color = '';
+    }else{
+      body.className='';
+      body.style.background = '#fff';
+      body.style.color = '#111';
+    }
+    localStorage.setItem('theme',t);
   }
-  localStorage.setItem('theme',t);
-}
-(function(){const t=localStorage.getItem('theme'); if(t) setTheme(t);})();
-document.getElementById('autoImport').checked = localStorage.getItem(LS_AUTO_IMPORT) === 'true';
-document.getElementById('autoImport').addEventListener('change', function(){ localStorage.setItem(LS_AUTO_IMPORT, this.checked); });
-document.getElementById('keepBackup').checked = false;
+  (function(){const t=localStorage.getItem('theme'); if(t) setTheme(t);})();
 
-/* Audio */
-const audio=document.getElementById('bgAudio'); const audioToggle=document.getElementById('audioToggle');
-audio.volume=0.12; audio.muted=false; audioToggle.classList.remove('muted');
-async function tryAutoPlay(){try{await audio.play(); audioToggle.textContent='🔊'; audioToggle.classList.remove('muted');}catch(e){audioToggle.textContent='🔈'; audioToggle.classList.add('muted');}}
-tryAutoPlay();
-function toggleAudio(){if(audio.paused){audio.play(); audioToggle.textContent='🔊'; audioToggle.classList.remove('muted');}else{audio.pause();audioToggle.textContent='🔈';audioToggle.classList.add('muted');}}
+  // Audio
+  const audio = document.getElementById('bgAudio');
+  const audioToggle = document.getElementById('audioToggle');
+  audio.volume = 0.12;
+  audio.onerror = function(){ audio.style.display='none'; audioToggle.style.display='none'; }
+  async function tryAutoPlay(){ try{ await audio.play(); audioToggle.textContent='🔊'; audioToggle.classList.remove('muted'); }catch(e){ audioToggle.textContent='🔈'; audioToggle.classList.add('muted'); } }
+  tryAutoPlay();
+  function toggleAudio(){ if(audio.paused){ audio.play(); audioToggle.textContent='🔊'; audioToggle.classList.remove('muted'); } else { audio.pause(); audioToggle.textContent='🔈'; audioToggle.classList.add('muted'); } }
 
-/* -------------------------
-  Yardımcılar: toasts, busy, online status
-   ------------------------- */
-function setBusy(on) {
-  busyCount += on ? 1 : -1;
-  busyCount = Math.max(0, busyCount);
-  const disabled = busyCount > 0;
-  ['btnSaveDrive','btnImportDrive','btnListFiles','btnAddStudent'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.disabled = disabled;
-  });
-}
-function showToast(text, type='success', timeout=3500, actionText, actionCallback) {
-  const container = document.getElementById('toasts');
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.setAttribute('role','status');
-  el.innerHTML = `<div style="flex:1">${text}</div>`;
-  if (actionText && actionCallback) {
-    const btn = document.createElement('div');
-    btn.className = 'action';
-    btn.textContent = actionText;
-    btn.onclick = () => { actionCallback(); btn.remove(); el.remove(); };
-    el.appendChild(btn);
+  // Render students list
+  function renderStudents(){
+    const container = document.getElementById('studentList'); container.innerHTML='';
+    if(students.length===0){
+      container.innerHTML='<div style="color:#666">Henüz öğrenci yok.</div>'; return;
+    }
+    students.forEach((s,idx)=>{
+      const div = document.createElement('div'); div.className='studentItem';
+      const left = document.createElement('div');
+      left.innerHTML = `<div class="studentInfo">${s.name} ${s.surname} <small style="font-weight:400">(${s.type})</small></div>
+                        <div style="font-size:13px;color:#444">${(s.exams||[]).length} deneme</div>`;
+      const right = document.createElement('div'); right.className='controls';
+      const btnDetail = document.createElement('button'); btnDetail.textContent='Detay Gör';
+      btnDetail.addEventListener('click', function(e){ e.stopPropagation(); showExams(idx); });
+      const btnDelete = document.createElement('button'); btnDelete.textContent='Sil'; btnDelete.className='danger';
+      btnDelete.addEventListener('click', function(e){ e.stopPropagation(); if(confirm('Öğrenciyi silmek istediğine emin misin?')){ students.splice(idx,1); save(); renderStudents(); }});
+      right.appendChild(btnDetail); right.appendChild(btnDelete); div.appendChild(left); div.appendChild(right); container.appendChild(div);
+    });
   }
-  container.appendChild(el);
-  // animate in
-  requestAnimationFrame(()=> el.classList.add('visible'));
-  if (timeout > 0) setTimeout(()=> { el.classList.remove('visible'); setTimeout(()=>el.remove(),200); }, timeout);
-}
-function showMsg(msg, isError=false) {
-  const el = document.getElementById('googleDriveMsg');
-  el.innerHTML = `<span style="color:${isError?'red':'green'}">${msg}</span>`;
-  showToast(msg, isError?'error':'success', 4000);
-}
 
-/* Online indicator */
-function updateOnlineStatus(){ document.getElementById('offlineIndicator').textContent = navigator.onLine ? 'Çevrimiçi' : 'Çevrimdışı'; }
-window.addEventListener('online', updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-updateOnlineStatus();
-
-/* -------------------------
-  Local save + autosave debounce + undo
-   ------------------------- */
-function saveLocal(){ localStorage.setItem(LS_KEY, JSON.stringify(students)); localStorage.setItem(LS_FILE_MTIME, new Date().toISOString()); }
-function scheduleSaveLocal(){
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=> {
-    saveLocal();
-    showToast('Yerel olarak kaydedildi', 'success', 2000);
-  }, 800);
-}
-
-/* Undo delete support */
-function pushDeleted(item, idx) {
-  lastDeleted = { item, idx, time: Date.now() };
-  showToast('Öğe silindi', 'info', 6000, 'Geri al', undoDelete);
-}
-function undoDelete(){
-  if(!lastDeleted) { showToast('Geri alınacak öğe yok', 'error'); return; }
-  students.splice(lastDeleted.idx,0,lastDeleted.item);
-  saveLocal(); renderStudents();
-  lastDeleted = null;
-  showToast('Silme işlemi geri alındı', 'success');
-}
-
-/* -------------------------
-  Öğrenci CRUD ve UI
-   ------------------------- */
-function addStudent(){
-  const name=document.getElementById('inpName').value.trim();
-  const surname=document.getElementById('inpSurname').value.trim();
-  const type=document.getElementById('inpType').value;
-  const msgEl=document.getElementById('studentMsg');
-  msgEl.innerHTML='';
-  if(!name||!surname){ msgEl.innerHTML='<span style="color:red">Ad ve soyad gerekli</span>'; showToast('Ad ve soyad gerekli', 'error'); return; }
-  if(students.some(s=>s.name.toLowerCase()===name.toLowerCase()&&s.surname.toLowerCase()===surname.toLowerCase())){
-    msgEl.innerHTML='<span style="color:red">Bu isimde bir öğrenci zaten var.</span>'; showToast('Bu isimde öğrenci zaten var', 'error'); return;
+  // Modal
+  function showModal(title, bodyHtml, footerHtml){
+    document.getElementById('modalTitle').innerHTML = title;
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalFooter').innerHTML = footerHtml;
+    const modal=document.getElementById('modal'); modal.style.display='flex'; modal.focus();
   }
-  const newStudent = {id:uid(),name,surname,type,exams:[]};
-  students.push(newStudent);
-  scheduleSaveLocal(); renderStudents();
-  document.getElementById('inpName').value=''; document.getElementById('inpSurname').value='';
-  msgEl.innerHTML='<span class="successMsg">Öğrenci eklendi ✔️</span>';
-  showToast('Öğrenci eklendi', 'success');
-}
+  function closeModal(){ document.getElementById('modal').style.display='none'; modalStudentIdx=null; modalExamIdx=null; }
+  document.getElementById('modal').addEventListener('keydown', function(e){ if(e.key==='Escape') closeModal(); });
 
-function clearAll(){
-  if(confirm('Tüm verileri silmek istediğine emin misin?')){
-    students=[]; saveLocal(); renderStudents(); closeModal();
-    showToast('Tüm veriler silindi', 'info');
+  // Charts
+  function drawChart(canvasId, denemeler){
+    if(!document.getElementById(canvasId)) return;
+    const labels = denemeler.map(ex=>ex.date||'');
+    const nets = denemeler.map(ex=>Number(ex.toplamNet)||0);
+    const bgColor = pastelColors[Math.floor(Math.random()*pastelColors.length)];
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if(charts[canvasId]) charts[canvasId].destroy();
+    charts[canvasId] = new Chart(ctx, {
+      type: 'line',
+      data: { labels: labels, datasets: [{ label:'Toplam Net', data:nets, borderColor:'#007bff', backgroundColor:bgColor, fill:true, tension:0.3, pointBackgroundColor:bgColor, pointBorderColor:'#333'}] },
+      options: { responsive:true, plugins:{legend:{display:true}}, scales:{ y:{ beginAtZero:true } } }
+    });
   }
-}
 
-function renderStudents(){
-  const container=document.getElementById('studentList'); container.innerHTML='';
-  if(students.length===0){
-    container.innerHTML='<div style="color:#666">Henüz öğrenci yok.</div>'; return;
+  // Dersler & limits
+  function getDerslerFor(studentType,oturum){
+    if(oturum==='TYT') return ['Mat','Turkce','Sosyal','Fen'];
+    else if(studentType==='Sayisal') return ['Matematik','Fizik','Kimya','Biyoloji'];
+    else if(studentType==='Sozel') return ['Turkce','Tarih1','Cografya1','Tarih2','Cografya2','Felsefe','Din'];
+    else if(studentType==='EsitAgirlik') return ['Matematik','Turkce','Tarih1','Cografya1'];
+    return [];
   }
-  students.forEach((s,idx)=>{
-    const div=document.createElement('div'); div.className='studentItem';
-    const left=document.createElement('div'); left.innerHTML=`<div class="studentInfo">${s.name} ${s.surname} <small style="font-weight:400">(${s.type})</small></div>
-    <div style="font-size:13px;color:#444">${s.exams?.length||0} deneme</div>`;
-    const right=document.createElement('div'); right.className='controls';
-    const btnDetail=document.createElement('button'); btnDetail.textContent='Detay Gör'; btnDetail.onclick=function(){showExams(idx);};
-    const btnDelete=document.createElement('button'); btnDelete.textContent='Sil'; btnDelete.className='danger'; btnDelete.onclick=function(){
-      if(confirm('Öğrenciyi sil?')){ pushDeleted(s, idx); students.splice(idx,1); saveLocal(); renderStudents(); }
+  function getLimitForField(oturum,studentType,field){
+    const limits={
+      TYT:{Mat:40,Turkce:40,Sosyal:20,Fen:20},
+      AYT:{
+        Sayisal:{Matematik:40,Fizik:14,Kimya:13,Biyoloji:13},
+        Sozal:{Turkce:24,Tarih1:10,Cografya1:6,Tarih2:11,Cografya2:11,Felsefe:12,Din:6},
+        EsitAgirlik:{Matematik:40,Turkce:24,Tarih1:10,Cografya1:6}
+      }
     };
-    right.appendChild(btnDetail); right.appendChild(btnDelete); div.appendChild(left); div.appendChild(right); container.appendChild(div);
-  });
-}
-
-/* -------------------------
-  Modal helpers
-   ------------------------- */
-function showModal(title,bodyHtml,footerHtml){
-  document.getElementById('modalTitle').innerHTML=title;
-  document.getElementById('modalBody').innerHTML=bodyHtml;
-  document.getElementById('modalFooter').innerHTML=footerHtml;
-  const modal=document.getElementById('modal');
-  modal.style.display='flex'; modal.focus();
-  setTimeout(()=> {
-    const firstInput = modal.querySelector('input, button, select, textarea');
-    if(firstInput) firstInput.focus();
-  },50);
-}
-function closeModal(){ document.getElementById('modal').style.display='none'; modalStudentIdx = null; modalExamIdx = null; }
-document.getElementById('modal').addEventListener('keydown',function(e){ if(e.key==='Escape') closeModal(); });
-
-/* -------------------------
-  Grafik ve Deneme form fonksiyonları
-   ------------------------- */
-function toggleChart(chartId, btnId) {
-  const chartDiv = document.getElementById(chartId).parentNode;
-  const btn = document.getElementById(btnId);
-  if (chartDiv.style.display === 'none') {
-    chartDiv.style.display = '';
-    btn.textContent = 'Grafiği Kapat';
-  } else {
-    chartDiv.style.display = 'none';
-    btn.textContent = 'Grafiği Aç';
+    if(oturum==='TYT') return limits.TYT[field] ?? null;
+    const raw = limits.AYT[studentType] || {};
+    const map = {};
+    Object.keys(raw).forEach(k => map[norm(k).toLowerCase()] = raw[k]);
+    return map[norm(field).toLowerCase()] ?? null;
   }
-}
 
-function showExams(idx){
-  modalStudentIdx = idx;
-  const student = students[idx];
-  let tytDenemeler = student.exams.filter(e=>e.session==='TYT').sort((a,b)=>a.date.localeCompare(b.date));
-  let aytDenemeler = student.exams.filter(e=>e.session==='AYT').sort((a,b)=>a.date.localeCompare(b.date));
+  // Exams UI
+  function toggleChart(chartId, btnId){
+    const chartDiv = document.getElementById(chartId).parentNode;
+    const btn = document.getElementById(btnId);
+    if(chartDiv.style.display === 'none' || chartDiv.style.display === ''){
+      chartDiv.style.display = (chartDiv.style.display === 'none') ? '' : '';
+      btn.textContent = (btn.textContent === 'Grafiği Kapat') ? 'Grafiği Aç' : 'Grafiği Kapat';
+    } else {
+      chartDiv.style.display = 'none';
+      btn.textContent = 'Grafiği Aç';
+    }
+  }
 
-  function tableHtml(denemeler, dersler, session){
-    if(denemeler.length===0)
-      return '<tr><td colspan="99" style="color:#888">Henüz deneme yok.</td></tr>';
-    return denemeler.map((ex,i)=>{
-      let dersTd = dersler.map(ders=>{
-        let d = ex.nets[ders]||{};
-        return `<td>
-          <span title="Doğru">${d.dogru??'-'}</span> /
-          <span title="Yanlış">${d.yanlis??'-'}</span> /
-          <b>${d.net??'-'}</b>
-        </td>`;
+  function showExams(idx){
+    modalStudentIdx = idx;
+    const student = students[idx];
+    const tytDenemeler = (student.exams || []).filter(e=>e.session==='TYT').slice().sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+    const aytDenemeler = (student.exams || []).filter(e=>e.session==='AYT').slice().sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+    function tableHtml(denemeler, dersler){
+      if(denemeler.length===0) return '<tr><td colspan="99" style="color:#888">Henüz deneme yok.</td></tr>';
+      return denemeler.map((ex,i)=>{
+        let dersTd = dersler.map(ders=>{
+          let d = ex.nets && ex.nets[ders] ? ex.nets[ders] : {};
+          return `<td><span title="Doğru">${d.dogru??'-'}</span> / <span title="Yanlış">${d.yanlis??'-'}</span> / <b>${d.net??'-'}</b></td>`;
+        }).join('');
+        return `<tr>
+          <td>${ex.date||'-'}</td>
+          ${dersTd}
+          <td><b>${ex.toplamNet??'-'}</b></td>
+          <td>
+            <button onclick="app.editExam(${idx},${i})" class="small">Düzenle</button>
+            <button onclick="app.deleteExam(${idx},${i})" class="small danger">Sil</button>
+          </td>
+        </tr>`;
       }).join('');
-      return `<tr>
-        <td>${ex.date||'-'}</td>
-        ${dersTd}
-        <td><b>${ex.toplamNet??'-'}</b></td>
-        <td>
-          <button onclick="editExam(${idx},${student.exams.indexOf(ex)})" class="small">Düzenle</button>
-          <button onclick="deleteExam(${idx},${student.exams.indexOf(ex)})" class="small danger">Sil</button>
-        </td>
-      </tr>`;
-    }).join('');
-  }
-
-  let tytDersler = getDerslerFor(student.type, 'TYT');
-  let aytDersler = getDerslerFor(student.type, 'AYT');
-  let bodyHtml = `
-    <button onclick="addExamForm(${idx})" class="small" style="margin-bottom:10px">+ Deneme Ekle</button>
-    <div>
-      <h4>TYT Denemeleri</h4>
-      <table>
-        <tr><th>Tarih</th>${tytDersler.map(d=>`<th>${d}</th>`).join('')}<th>Toplam Net</th><th>İşlem</th></tr>
-        ${tableHtml(tytDenemeler, tytDersler, 'TYT')}
-      </table>
-      <button onclick="toggleChart('tytChart','btn_tytChart')" class="small secondary toggleChartBtn" id="btn_tytChart">Grafiği Aç</button>
-      <div class="chartWrapper" style="display:none;"><canvas id="tytChart"></canvas></div>
-    </div>
-    <div>
-      <h4>AYT Denemeleri</h4>
-      <table>
-        <tr><th>Tarih</th>${aytDersler.map(d=>`<th>${d}</th>`).join('')}<th>Toplam Net</th><th>İşlem</th></tr>
-        ${tableHtml(aytDenemeler, aytDersler, 'AYT')}
-      </table>
-      <button onclick="toggleChart('aytChart','btn_aytChart')" class="small secondary toggleChartBtn" id="btn_aytChart">Grafiği Aç</button>
-      <div class="chartWrapper" style="display:none;"><canvas id="aytChart"></canvas></div>
-    </div>
-  `;
-  showModal(
-    `${student.name} ${student.surname} - Denemeleri`,
-    bodyHtml,
-    `<button onclick="closeModal()" class="secondary">Kapat</button>`
-  );
-  setTimeout(function(){
-    drawChart('tytChart', tytDenemeler);
-    drawChart('aytChart', aytDenemeler);
-  },50);
-}
-
-function drawChart(canvasId, denemeler){
-  const labels = denemeler.map(ex=>ex.date||'');
-  const nets = denemeler.map(ex=>Number(ex.toplamNet)||0);
-  const bgColor = pastelColors[Math.floor(Math.random()*pastelColors.length)];
-  const ctx = document.getElementById(canvasId).getContext('2d');
-  new Chart(ctx, {
-    type: 'line',
-    data: { labels: labels, datasets: [{
-      label:'Toplam Net',
-      data:nets,
-      borderColor:'#007bff',
-      backgroundColor:bgColor,
-      fill:true,
-      tension:0.3,
-      pointBackgroundColor: bgColor,
-      pointBorderColor:'#333',
-    }] },
-    options: {
-      responsive:true,
-      plugins:{legend:{display:true}},
-      scales: {
-        y: { beginAtZero:true }
-      }
     }
-  });
-}
 
-/* Deneme ekleme/düzenleme formu */
-function addExamForm(idx){
-  modalStudentIdx = idx;
-  modalExamIdx = null;
-  var oturumOpt = `<option value="TYT">TYT</option><option value="AYT">AYT</option>`;
-  showModal("Deneme Ekle",
-    `<label>Oturum
-      <select id="examSession">${oturumOpt}</select>
-    </label>
-    <label>Tarih <input type="date" id="examDate"></label>
-    <div id="dersFields"></div>
-    <div id="examMsg"></div>
-    `,
-    `<button onclick="saveExam()" id="modalSave">Kaydet</button>
-    <button onclick="showExams(${idx})" class="secondary">Geri</button>`
-  );
-  document.getElementById('examSession').addEventListener('change', function(){renderNetFields();});
-  renderNetFields();
-}
-
-function editExam(idx,exIdx){
-  modalStudentIdx = idx;
-  modalExamIdx = exIdx;
-  const student = students[idx];
-  const exam = student.exams[exIdx];
-  var oturumOpt = `<option value="TYT"${exam.session==='TYT'?' selected':''}>TYT</option>
-                   <option value="AYT"${exam.session==='AYT'?' selected':''}>AYT</option>`;
-  showModal("Deneme Düzenle",
-    `<label>Oturum
-      <select id="examSession">${oturumOpt}</select>
-    </label>
-    <label>Tarih <input type="date" id="examDate" value="${exam.date}"></label>
-    <div id="dersFields"></div>
-    <div id="examMsg"></div>
-    `,
-    `<button onclick="saveExam()" id="modalSave">Kaydet</button>
-     <button onclick="showExams(${idx})" class="secondary">Geri</button>`
-  );
-  document.getElementById('examSession').addEventListener('change', function(){renderNetFields(exIdx);});
-  renderNetFields(exIdx);
-}
-
-/* Form fields, validation and automatic net calc */
-function renderNetFields(examIndex){
-  const idx = modalStudentIdx;
-  const exIdx = typeof examIndex==='number'?examIndex:null;
-  const student = students[idx];
-  const session = document.getElementById('examSession').value;
-  const dersler = getDerslerFor(student.type, session);
-  let html = '';
-  let nets = exIdx!==null ? student.exams[exIdx].nets : {};
-  dersler.forEach(ders => {
-    let dogru = nets[ders]?.dogru ?? '';
-    let yanlis = nets[ders]?.yanlis ?? '';
-    let net = dogru!=='' && yanlis!=='' ? (dogru - (yanlis / 4)).toFixed(2) : '';
-    let lim = getLimitForField(session,student.type,ders);
-    // NOTE: fixed missing } in template expression here (calcNet('${ders}'); ...)
-    html += `<label>${ders}
-      <div style="display:flex;gap:4px;">
-        <input type="number" id="dogru_${ders}" min="0" max="${lim}" value="${dogru}" placeholder="Doğru" oninput="inputLimitCheck('${ders}',${lim});calcNet('${ders}');scheduleSaveLocal();">
-        <input type="number" id="yanlis_${ders}" min="0" max="${lim}" value="${yanlis}" placeholder="Yanlış" oninput="inputLimitCheck('${ders}',${lim});calcNet('${ders}');scheduleSaveLocal();">
-        <input type="number" id="net_${ders}" value="${net}" readonly style="width:60px;">
+    let tytDersler = getDerslerFor(student.type, 'TYT');
+    let aytDersler = getDerslerFor(student.type, 'AYT');
+    let bodyHtml = `
+      <button onclick="app.addExamForm(${idx})" class="small" style="margin-bottom:10px">+ Deneme Ekle</button>
+      <div>
+        <h4>TYT Denemeleri</h4>
+        <table>
+          <tr><th>Tarih</th>${tytDersler.map(d=>`<th>${d}</th>`).join('')}<th>Toplam Net</th><th>İşlem</th></tr>
+          ${tableHtml(tytDenemeler, tytDersler)}
+        </table>
+        <button onclick="app.toggleChart('tytChart','btn_tytChart')" class="small secondary toggleChartBtn" id="btn_tytChart">Grafiği Aç</button>
+        <div class="chartWrapper" style="display:none;"><canvas id="tytChart"></canvas></div>
       </div>
-      <div class="limitWarn" id="limitWarn_${ders}"></div>
-    </label>`;
-  });
-  document.getElementById('dersFields').innerHTML = html;
-}
-
-function inputLimitCheck(ders, lim){
-  const dogruEl = document.getElementById('dogru_' + ders);
-  const yanlisEl = document.getElementById('yanlis_' + ders);
-  let dogru = Number(dogruEl?.value) || 0;
-  let yanlis = Number(yanlisEl?.value) || 0;
-  let warn = document.getElementById('limitWarn_' + ders);
-  if(dogru + yanlis > lim){
-    warn.textContent = `Doğru+Yanlış toplamı en fazla ${lim} olabilir!`;
-  } else {
-    warn.textContent = '';
+      <div>
+        <h4>AYT Denemeleri</h4>
+        <table>
+          <tr><th>Tarih</th>${aytDersler.map(d=>`<th>${d}</th>`).join('')}<th>Toplam Net</th><th>İşlem</th></tr>
+          ${tableHtml(aytDenemeler, aytDersler)}
+        </table>
+        <button onclick="app.toggleChart('aytChart','btn_aytChart')" class="small secondary toggleChartBtn" id="btn_aytChart">Grafiği Aç</button>
+        <div class="chartWrapper" style="display:none;"><canvas id="aytChart"></canvas></div>
+      </div>
+    `;
+    showModal(`${student.name} ${student.surname} - Denemeleri`, bodyHtml, `<button onclick="app.closeModal()" class="secondary">Kapat</button>`);
+    setTimeout(function(){ drawChart('tytChart', tytDenemeler); drawChart('aytChart', aytDenemeler); },50);
   }
-}
 
-function calcNet(ders) {
-  let dogru = Number(document.getElementById('dogru_' + ders).value) || 0;
-  let yanlis = Number(document.getElementById('yanlis_' + ders).value) || 0;
-  let net = (dogru - (yanlis / 4)).toFixed(2);
-  document.getElementById('net_' + ders).value = net;
-}
-
-function saveExam(){
-  const idx = modalStudentIdx;
-  const student = students[idx];
-  const session = document.getElementById('examSession').value;
-  const date = document.getElementById('examDate').value;
-  const dersler = getDerslerFor(student.type,session);
-  let nets = {}, msgEl=document.getElementById('examMsg');
-  msgEl.innerHTML='';
-  let hasError = false;
-  let toplamNet = 0;
-  dersler.forEach(ders=>{
-    const lim = getLimitForField(session,student.type,ders);
-    let dogru = Number(document.getElementById('dogru_' + ders).value) || 0;
-    let yanlis = Number(document.getElementById('yanlis_' + ders).value) || 0;
-    if(isNaN(dogru) || dogru<0 || dogru>lim){hasError=true;msgEl.innerHTML += `<span style="color:red">${ders} doğru sayısı 0 ile ${lim} arasında olmalı.<br></span>`;}
-    if(isNaN(yanlis) || yanlis<0 || yanlis>lim){hasError=true;msgEl.innerHTML += `<span style="color:red">${ders} yanlış sayısı 0 ile ${lim} arasında olmalı.<br></span>`;}
-    if(dogru + yanlis > lim){hasError=true;msgEl.innerHTML += `<span style="color:red">${ders} için doğru+yanlış toplamı en fazla ${lim} olabilir.<br></span>`;}
-    let net = (dogru - (yanlis / 4)).toFixed(2);
-    nets[ders] = {dogru, yanlis, net};
-    toplamNet += Number(net);
-  });
-  if(hasError) { showToast('Deneme kaydedilemedi: hatalar var', 'error'); return; }
-  if(modalExamIdx!==null){
-    student.exams[modalExamIdx] = {session,date,nets,toplamNet:toplamNet.toFixed(2)};
-    msgEl.innerHTML='<span class="successMsg">Deneme güncellendi ✔️</span>';
-    showToast('Deneme güncellendi', 'success');
-  }else{
-    student.exams.push({session,date,nets,toplamNet:toplamNet.toFixed(2)});
-    msgEl.innerHTML='<span class="successMsg">Deneme eklendi ✔️</span>';
-    showToast('Deneme eklendi', 'success');
+  // Exam add/edit forms
+  function addExamForm(idx){ modalStudentIdx = idx; modalExamIdx = null;
+    const oturumOpt = `<option value="TYT">TYT</option><option value="AYT">AYT</option>`;
+    showModal("Deneme Ekle",
+      `<label>Oturum
+        <select id="examSession">${oturumOpt}</select>
+      </label>
+      <label>Tarih <input type="date" id="examDate"></label>
+      <div id="dersFields"></div>
+      <div id="examMsg"></div>`,
+      `<button onclick="app.saveExam()" id="modalSave">Kaydet</button><button onclick="app.showExams(${idx})" class="secondary">Geri</button>`
+    );
+    document.getElementById('examSession').addEventListener('change', function(){ renderNetFields(); });
+    renderNetFields();
   }
-  scheduleSaveLocal(); setTimeout(function(){showExams(idx);},600);
-}
 
-function deleteExam(idx,exIdx){
-  if(confirm('Bu denemeyi silmek istiyor musun?')){
-    const removed = students[idx].exams.splice(exIdx,1)[0];
-    pushDeleted(removed, exIdx);
-    saveLocal(); showExams(idx);
+  function editExam(idx, exIdx){
+    modalStudentIdx = idx; modalExamIdx = exIdx;
+    const student = students[idx];
+    const exam = student.exams[exIdx];
+    const oturumOpt = `<option value="TYT"${exam.session==='TYT'?' selected':''}>TYT</option>
+                       <option value="AYT"${exam.session==='AYT'?' selected':''}>AYT</option>`;
+    showModal("Deneme Düzenle",
+      `<label>Oturum
+        <select id="examSession">${oturumOpt}</select>
+      </label>
+      <label>Tarih <input type="date" id="examDate" value="${exam.date || ''}"></label>
+      <div id="dersFields"></div>
+      <div id="examMsg"></div>`,
+      `<button onclick="app.saveExam()" id="modalSave">Kaydet</button><button onclick="app.showExams(${idx})" class="secondary">Geri</button>`
+    );
+    document.getElementById('examSession').addEventListener('change', function(){ renderNetFields(exIdx); });
+    renderNetFields(exIdx);
   }
-}
 
-/* -------------------------
-  Drive işlemleri (özet)
-  (kod önceki haliyle korunmuştur)
-   ------------------------- */
+  function renderNetFields(examIndex){
+    const idx = modalStudentIdx; const exIdx = typeof examIndex === 'number' ? examIndex : null;
+    const student = students[idx];
+    const session = document.getElementById('examSession').value;
+    const dersler = getDerslerFor(student.type, session);
+    let html='';
+    const nets = exIdx !== null && student.exams[exIdx] ? (student.exams[exIdx].nets || {}) : {};
+    dersler.forEach(ders => {
+      const safe = idify(ders);
+      let dogru = nets[ders]?.dogru ?? '';
+      let yanlis = nets[ders]?.yanlis ?? '';
+      let net = (dogru !== '' && yanlis !== '') ? (Number(dogru) - (Number(yanlis)/4)).toFixed(2) : '';
+      let lim = getLimitForField(session, student.type, ders) ?? '';
+      html += `<label>${ders}
+        <div style="display:flex;gap:4px;">
+          <input type="number" id="dogru_${safe}" min="0" max="${lim}" value="${dogru}" placeholder="Doğru" oninput="app.inputLimitCheck('${safe}',${lim});app.calcNet('${safe}')">
+          <input type="number" id="yanlis_${safe}" min="0" max="${lim}" value="${yanlis}" placeholder="Yanlış" oninput="app.inputLimitCheck('${safe}',${lim});app.calcNet('${safe}')">
+          <input type="number" id="net_${safe}" value="${net}" readonly style="width:60px;">
+        </div>
+        <div class="limitWarn" id="limitWarn_${safe}"></div>
+      </label>`;
+    });
+    document.getElementById('dersFields').innerHTML = html;
+  }
 
-function startAuthFor(action) {
-  const tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (resp) => {
-      if (resp.error) {
-        showMsg('Google giriş hatası: ' + resp.error, true);
-        return;
-      }
-      fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': 'Bearer ' + resp.access_token } })
-      .then(r=>r.json())
-      .then(user=>{
-        localStorage.setItem(LS_ACCOUNT, JSON.stringify(user));
-        document.getElementById('accountInfo').innerText = `Drive hesabı: ${user.email}`;
-      }).catch(()=>{});
-      if (action === 'upload') uploadStudentsToDrive(resp.access_token);
-      else if (action === 'import') downloadStudentsFromDrive(resp.access_token);
-      else if (action === 'list') listDriveFilesAndShow(resp.access_token);
+  function inputLimitCheck(safeDers, lim){
+    const dogEl = document.getElementById('dogru_' + safeDers);
+    const yanEl = document.getElementById('yanlis_' + safeDers);
+    if(!dogEl || !yanEl) return;
+    let dogru = Number(dogEl.value) || 0;
+    let yanlis = Number(yanEl.value) || 0;
+    const warn = document.getElementById('limitWarn_' + safeDers);
+    if(lim !== '' && (dogru + yanlis > lim)) warn.textContent = `Doğru+Yanlış toplamı en fazla ${lim} olabilir!`;
+    else warn.textContent = '';
+  }
+
+  function calcNet(safeDers){
+    const dog = Number(document.getElementById('dogru_' + safeDers).value) || 0;
+    const yan = Number(document.getElementById('yanlis_' + safeDers).value) || 0;
+    const net = (dog - (yan/4)).toFixed(2);
+    const netEl = document.getElementById('net_' + safeDers);
+    if(netEl) netEl.value = net;
+  }
+
+  function saveExam(){
+    const idx = modalStudentIdx; const student = students[idx];
+    const session = document.getElementById('examSession').value;
+    const date = document.getElementById('examDate').value;
+    const dersler = getDerslerFor(student.type, session);
+    let nets = {}, msgEl = document.getElementById('examMsg'); msgEl.innerHTML=''; let hasError=false; let toplamNet=0;
+    dersler.forEach(ders=>{
+      const safe = idify(ders);
+      const lim = getLimitForField(session, student.type, ders) ?? Infinity;
+      let dogru = Number(document.getElementById('dogru_' + safe).value) || 0;
+      let yanlis = Number(document.getElementById('yanlis_' + safe).value) || 0;
+      if(isNaN(dogru) || dogru < 0 || dogru > lim){ hasError=true; msgEl.innerHTML += `<span style="color:red">${ders} doğru sayısı 0 ile ${lim} arasında olmalı.<br></span>`; }
+      if(isNaN(yanlis) || yanlis < 0 || yanlis > lim){ hasError=true; msgEl.innerHTML += `<span style="color:red">${ders} yanlış sayısı 0 ile ${lim} arasında olmalı.<br></span>`; }
+      if(dogru + yanlis > lim){ hasError=true; msgEl.innerHTML += `<span style="color:red">${ders} için doğru+yanlış toplamı en fazla ${lim} olabilir.<br></span>`; }
+      let net = (dogru - (yanlis / 4)).toFixed(2);
+      nets[ders] = {dogru, yanlis, net};
+      toplamNet += Number(net);
+    });
+    if(hasError) return;
+    if(modalExamIdx !== null){ student.exams[modalExamIdx] = {session, date, nets, toplamNet: toplamNet.toFixed(2)}; msgEl.innerHTML = '<span class="successMsg">Deneme güncellendi ✔️</span>'; }
+    else { student.exams = student.exams || []; student.exams.push({session, date, nets, toplamNet: toplamNet.toFixed(2)}); msgEl.innerHTML = '<span class="successMsg">Deneme eklendi ✔️</span>'; }
+    save(); setTimeout(function(){ showExams(idx); },600);
+  }
+
+  function deleteExam(idx, exIdx){
+    if(confirm('Bu denemeyi silmek istiyor musun?')){ students[idx].exams.splice(exIdx,1); save(); showExams(idx); }
+  }
+
+  // Google Drive: authorization helper
+  function ensureToken(onSuccess, onError){
+    // lazily init tokenClient
+    if(!tokenClient){
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (resp) => {
+          if(resp.error){
+            if(onError) onError(resp);
+            else googleDriveMsgEl().innerHTML = `<span style="color:red">Google auth hatası: ${resp.error}</span>`;
+            return;
+          }
+          currentAccessToken = resp.access_token;
+          // show sign-out button
+          document.getElementById('btnSignOut').style.display = '';
+          if(onSuccess) onSuccess(resp.access_token);
+        }
+      });
     }
-  });
-  tokenClient.requestAccessToken();
-}
-
-/* (drive-related functions omitted here for brevity in this snippet, they remain unchanged in your code) */
-/* For your local copy the upload/download/list functions are the same as previously provided. */
-
-function uid(){ return Date.now()+Math.floor(Math.random()*999); }
-
-/* Başlangıç */
-renderStudents();
-(function showStoredAccount(){
-  const acc = localStorage.getItem(LS_ACCOUNT);
-  if (acc) {
-    try{
-      const u = JSON.parse(acc);
-      document.getElementById('accountInfo').innerText = `Drive hesabı: ${u.email}`;
-    }catch(e){}
+    // request token (will prompt if needed)
+    tokenClient.requestAccessToken();
   }
+
+  // Upload current students to Drive (creates a new file)
+  function uploadStudentsToDrive(accessToken){
+    googleDriveMsgEl().innerHTML = 'Yükleniyor...';
+    const fileContent = JSON.stringify(students, null, 2);
+    const metadata = { name: 'deneme_analiz_verileri_' + (new Date()).toISOString().replace(/[:.]/g,'-') + '.json', mimeType: 'application/json' };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', new Blob([fileContent], { type: 'application/json' }));
+
+    fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+      body: form
+    })
+    .then(res => res.json())
+    .then(val => {
+      if(val.id){
+        const link = `https://drive.google.com/file/d/${val.id}/view?usp=sharing`;
+        googleDriveMsgEl().innerHTML = `<span style="color:green">Veriler Drive'a kaydedildi ✔️ — <a href="${link}" target="_blank" rel="noopener">Dosyayı Aç</a></span>`;
+      } else {
+        googleDriveMsgEl().innerHTML = `<span style="color:red">Yükleme hatası: ${val.error?.message || 'Bilinmeyen hata'}</span>`;
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      googleDriveMsgEl().innerHTML = `<span style="color:red">Drive'a yüklenirken hata oluştu.</span>`;
+    });
+  }
+
+  // List candidate JSON files in Drive (filter by name containing 'deneme_analiz_verileri' OR mimeType json)
+  function listFilesOnDrive(accessToken){
+    googleDriveMsgEl().innerHTML = 'Drive dosyaları alınıyor...';
+    driveListEl().innerHTML = '';
+    // Query: application/json files OR name contains deneme_analiz_verileri
+    const q = encodeURIComponent(`mimeType='application/json' or name contains 'deneme_analiz_verileri'`);
+    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,createdTime,webViewLink)&pageSize=50&orderBy=createdTime desc`;
+    fetch(url, { headers: { 'Authorization': 'Bearer ' + accessToken } })
+      .then(res => res.json())
+      .then(data => {
+        if(!data.files || data.files.length === 0){
+          googleDriveMsgEl().innerHTML = '<span style="color:orange">Drive üzerinde uygun JSON dosyası bulunamadı.</span>';
+          return;
+        }
+        googleDriveMsgEl().innerHTML = `<span style="color:green">${data.files.length} dosya bulundu. İndirilecek dosyayı seçin.</span>`;
+        driveListEl().innerHTML = data.files.map(f => {
+          return `<div class="driveFile"><div><strong>${f.name}</strong><div style="font-size:12px;color:#666">${f.createdTime || ''}</div></div>
+            <div style="display:flex;gap:6px">
+              <button class="small" data-fileid="${f.id}" data-filename="${f.name}">Yükle</button>
+              <a class="small secondary" href="${f.webViewLink || '#'}" target="_blank" rel="noopener">Aç</a>
+            </div></div>`;
+        }).join('');
+        // attach listeners
+        Array.from(driveListEl().querySelectorAll('button[data-fileid]')).forEach(btn=>{
+          btn.addEventListener('click', function(){
+            const fileId = this.getAttribute('data-fileid');
+            const name = this.getAttribute('data-filename');
+            if(confirm(`${name} dosyasını uygulamaya yüklemek istiyor musunuz? Mevcut veriler üzerine yazılacak.`)){
+              fetchFileFromDrive(fileId, currentAccessToken);
+            }
+          });
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        googleDriveMsgEl().innerHTML = `<span style="color:red">Drive dosyaları alınırken hata oluştu.</span>`;
+      });
+  }
+
+  function fetchFileFromDrive(fileId, accessToken){
+    googleDriveMsgEl().innerHTML = 'Dosya indiriliyor...';
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+    fetch(url, { headers: { 'Authorization': 'Bearer ' + accessToken } })
+      .then(res => {
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(json => {
+        // Basic validation: expecting array or object with students list
+        if(Array.isArray(json) || json.students || json.length){
+          // if json is array of students, accept; if object has students key, use it.
+          const loaded = Array.isArray(json) ? json : (json.students || []);
+          if(!Array.isArray(loaded)){
+            googleDriveMsgEl().innerHTML = `<span style="color:red">Dosya formatı beklendiği gibi değil.</span>`;
+            return;
+          }
+          students = loaded;
+          save();
+          renderStudents();
+          googleDriveMsgEl().innerHTML = `<span style="color:green">Drive'den veri başarıyla yüklendi ✔️ (${fileId})</span>`;
+        } else {
+          googleDriveMsgEl().innerHTML = `<span style="color:red">Dosya içinde öğrenci verisi bulunamadı.</span>`;
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        googleDriveMsgEl().innerHTML = `<span style="color:red">Dosya indirilemedi veya JSON parse hatası.</span>`;
+      });
+  }
+
+  function signOut(){
+    // revoke token if possible (best effort)
+    if(currentAccessToken){
+      fetch(`https://oauth2.googleapis.com/revoke?token=${currentAccessToken}`, { method: 'POST', headers: { 'Content-type': 'application/x-www-form-urlencoded' } })
+        .then(()=>{ currentAccessToken = null; tokenClient = null; document.getElementById('btnSignOut').style.display = 'none'; googleDriveMsgEl().innerHTML = '<span style="color:green">Oturum kapatıldı.</span>'; })
+        .catch(()=>{ currentAccessToken = null; document.getElementById('btnSignOut').style.display = 'none'; googleDriveMsgEl().innerHTML = '<span style="color:orange">Oturum kapatma sırasında uyarı oluştu.</span>'; });
+    } else {
+      googleDriveMsgEl().innerHTML = '<span style="color:orange">Önceden giriş yapılmamış.</span>';
+    }
+  }
+
+  // Public functions for UI buttons
+  function handleAuthAndUpload(){
+    ensureToken(function(accessToken){
+      uploadStudentsToDrive(accessToken);
+    }, function(err){
+      googleDriveMsgEl().innerHTML = `<span style="color:red">Google kimlik doğrulaması başarısız.</span>`;
+    });
+  }
+
+  function handleAuthAndList(){
+    ensureToken(function(accessToken){
+      listFilesOnDrive(accessToken);
+    }, function(err){
+      googleDriveMsgEl().innerHTML = `<span style="color:red">Google kimlik doğrulaması başarısız.</span>`;
+    });
+  }
+
+  // Public small API for existing UI actions (add student, etc.)
+  function addStudent(){
+    const name = document.getElementById('inpName').value.trim();
+    const surname = document.getElementById('inpSurname').value.trim();
+    const type = document.getElementById('inpType').value;
+    const msgEl = document.getElementById('studentMsg'); msgEl.innerHTML='';
+    if(!name || !surname){ msgEl.innerHTML = '<span style="color:red">Ad ve soyad gerekli</span>'; return; }
+    if(students.some(s=> s.name.toLowerCase()===name.toLowerCase() && s.surname.toLowerCase()===surname.toLowerCase())){
+      msgEl.innerHTML = '<span style="color:red">Bu isimde bir öğrenci zaten var.</span>'; return;
+    }
+    students.push({id: uid(), name, surname, type, exams: []});
+    save(); renderStudents();
+    document.getElementById('inpName').value=''; document.getElementById('inpSurname').value='';
+    msgEl.innerHTML = '<span class="successMsg">Öğrenci eklendi ✔️</span>';
+  }
+
+  function clearAll(){ if(confirm('Tüm verileri silmek istediğine emin misin?')){ students=[]; save(); renderStudents(); closeModal(); googleDriveMsgEl().innerHTML=''; driveListEl().innerHTML=''; } }
+
+  // expose methods needed by inline handlers inside rendered HTML content
+  return {
+    setTheme,
+    toggleAudio,
+    addStudent,
+    clearAll,
+    renderStudents,
+    showExams,
+    addExamForm,
+    editExam,
+    saveExam,
+    deleteExam,
+    inputLimitCheck,
+    calcNet,
+    drawChart,
+    toggleChart,
+    // Drive methods
+    handleAuthAndUpload,
+    handleAuthAndList,
+    signOut,
+    // internal helpers used by generated html (edit/delete buttons)
+    closeModal
+  };
 })();
 
-/* Onboarding */
-(function tryShowOnboarding() {
-  if (localStorage.getItem(LS_ONBOARD)) return;
-  const body = `<div>
-    <p>Hoş geldiniz! Kısa bir tur:</p>
-    <ol>
-      <li>Öğrenci ekleyin.</li>
-      <li>Verilerinizi Drive'a kaydetmek için "Google ile Giriş & Kaydet" butonunu kullanın.</li>
-      <li>Başka cihazda "Drive’dan Yükle" ile verilerinizi geri getirin.</li>
-    </ol>
-    <label><input id="dontShowOnboard" type="checkbox"> Tekrar gösterme</label>
-  </div>`;
-  const footer = `<button onclick="(function(){ if(document.getElementById('dontShowOnboard')?.checked) localStorage.setItem('${LS_ONBOARD}', 'true'); closeModal(); })()">Tamam</button>`;
-  showModal('Hızlı Başlangıç', body, footer);
-})();
+// initial render
+app.renderStudents();
+
+// Make app available globally for inline handlers created dynamically
+window.app = app;
 </script>
 </body>
 </html>
